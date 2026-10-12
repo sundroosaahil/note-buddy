@@ -5,13 +5,13 @@
 // look the same, so that variant must persist for 2 consecutive events (~30ms). Touch input is never a barrel button.
 export function createBarrelDetector(onChange) {
   let held = false, count = 0
-  const set = (on) => { if (on !== held) { held = on; onChange(on) } }
+  const set = (on, e) => { if (on !== held) { held = on; onChange(on, e) } }
   return {
     update(e, tipDown) {
       if (e.pointerType === 'touch') return
-      if ((e.buttons & 2) !== 0) { count = 0; set(true); return }
+      if ((e.buttons & 2) !== 0) { count = 0; set(true, e); return }
       const hoverQuirk = e.pointerType === 'pen' && !tipDown && (e.buttons & 1) !== 0 && e.pressure === 0
-      if (hoverQuirk) { if (++count >= 2) set(true) } else { count = 0; set(false) }
+      if (hoverQuirk) { if (++count >= 2) set(true, e) } else { count = 0; set(false, e) }
     },
     resetCount() { count = 0 },
     reset() { count = 0; set(false) }, // pointercancel / lostpointercapture

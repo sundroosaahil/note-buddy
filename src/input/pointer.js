@@ -8,12 +8,13 @@ export function attachPointer(canvas, engine, getBarrelAction) {
   const pressure = (e) => (e.pointerType === 'pen' ? Math.max(e.pressure, 0.05) : 0.5)
   engine.diag = { pointerType: '', buttons: 0, pressure: 0, barrelHeld: false } // read by the Stage 5 diagnostics screen
 
-  function applyBarrel(on) {
+  function applyBarrel(on, e) {
     engine.diag.barrelHeld = on
     const a = getBarrelAction() // 'erase' (hold, always precision eraser) | 'pan' (hold) | 'toggleEraser' | 'undo'
     if (a === 'erase') { engine.override = on ? 'eraser' : null; engine.emit() }
     else if (a === 'pan') runAction(engine, 'holdPan', on)
     else if (on) runAction(engine, a)
+    if (e && tipId === e.pointerId) syncTipMode(e)
   }
   const det = createBarrelDetector(applyBarrel)
   const clearBarrel = () => det.reset()
@@ -22,6 +23,18 @@ export function attachPointer(canvas, engine, getBarrelAction) {
   function endTip() {
     if (mode === 'draw') engine.endStroke(); else if (mode === 'erase') engine.endErase()
     tipId = null; mode = null
+  }
+
+  function syncTipMode(e) {
+    const next = engine.effectiveTool === 'laser' ? 'laser' : engine.holdPan ? 'pan' : engine.effectiveTool === 'eraser' ? 'erase' : 'draw'
+    if (next === mode) return
+    const [x, y] = pos(e)
+    if (mode === 'draw') engine.endStroke()
+    else if (mode === 'erase') engine.endErase()
+    mode = next
+    if (next === 'erase') { engine.beginErase(); engine.eraseTo(x, y) }
+    else if (next === 'draw') engine.beginStroke(x, y, pressure(e))
+    else if (next === 'pan') last = [x, y]
   }
 
   function startTip(e) {
@@ -71,9 +84,11 @@ export function attachPointer(canvas, engine, getBarrelAction) {
   }
   const onUp = (e) => {
     if (e.pointerType === 'touch') { touches.delete(e.pointerId); if (touches.size < 2) gest = null; return }
-    if (e.pointerId === tipId) endTip()
+    // pointerup also fires for the barrel button; keep the tip interaction alive
+    // while its primary button is still held.
+    if (e.pointerId === tipId && (e.type === 'pointercancel' || !(e.buttons & 1))) endTip()
     if (e.type === 'pointercancel') clearBarrel()
-    else det.update(e, false) // all buttons released: barrel off
+    else det.update(e, e.pointerId === tipId) // release of the barrel button can leave the tip down
   }
   const onLost = (e) => { if (e.pointerType !== 'touch') { if (e.pointerId === tipId) endTip(); clearBarrel() } }
   const onWheel = (e) => { e.preventDefault(); const [x, y] = pos(e); engine.zoomAt(Math.exp(-e.deltaY * 0.0015), x, y) }

@@ -4,14 +4,24 @@ import { createBarrelDetector } from './barrel.js'
 export function attachPointer(canvas, engine, getBarrelAction) {
   const touches = new Map()
   let tipId = null, mode = null, last = null, gest = null
+  let barrelOn = false, holdErase = false // holdErase: erasing by moving the pen while the barrel button is held (hovering or touching)
   const pos = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top] }
   const pressure = (e) => (e.pointerType === 'pen' ? Math.max(e.pressure, 0.05) : 0.5)
   engine.diag = { pointerType: '', buttons: 0, pressure: 0, barrelHeld: false } // read by the Stage 5 diagnostics screen
 
+  // Hold-to-erase: the eraser follows the pen for as long as the barrel button is held. Drivers disagree on what they report
+  // while the tip touches (buttons 3, or just 2), so contact is not required. One hold (or one touching drag) = one undo step.
+  function beginHoldErase(e) {
+    if (holdErase || tipId !== null) return
+    holdErase = true; engine.beginErase()
+    if (e) { const [x, y] = pos(e); engine.eraseTo(x, y) }
+  }
+  function endHoldErase() { if (holdErase) { holdErase = false; engine.endErase() } }
+
   function applyBarrel(on, e) {
-    engine.diag.barrelHeld = on
+    barrelOn = on; engine.diag.barrelHeld = on
     const a = getBarrelAction() // 'erase' (hold, always precision eraser) | 'pan' (hold) | 'toggleEraser' | 'undo'
-    if (a === 'erase') { engine.override = on ? 'eraser' : null; engine.emit() }
+    if (a === 'erase') { engine.override = on ? 'eraser' : null; engine.emit(); if (on) beginHoldErase(e); else endHoldErase() }
     else if (a === 'pan') runAction(engine, 'holdPan', on)
     else if (on) runAction(engine, a)
     if (e && tipId === e.pointerId) syncTipMode(e)
@@ -23,6 +33,7 @@ export function attachPointer(canvas, engine, getBarrelAction) {
   function endTip() {
     if (mode === 'draw') engine.endStroke(); else if (mode === 'erase') engine.endErase()
     tipId = null; mode = null
+    if (barrelOn && getBarrelAction() === 'erase') beginHoldErase() // tip lifted but the button is still held: keep erasing
   }
 
   function syncTipMode(e) {
@@ -38,6 +49,7 @@ export function attachPointer(canvas, engine, getBarrelAction) {
   }
 
   function startTip(e) {
+    endHoldErase() // the touching drag becomes its own erase action
     tipId = e.pointerId; det.resetCount()
     try { canvas.setPointerCapture(e.pointerId) } catch { /* pointer no longer active */ }
     const [x, y] = pos(e), t = engine.effectiveTool
@@ -73,6 +85,11 @@ export function attachPointer(canvas, engine, getBarrelAction) {
     else if (tipId === e.pointerId && !(e.buttons & 1)) endTip()
     const [x, y] = pos(e); engine.setCursor(x, y)
     if (engine.effectiveTool === 'laser') engine.laserTo(x, y) // laser follows hover too
+    if (holdErase && tipId === null) { // pen button held, tip not touching (or driver dropped the touch bit): erase along the path
+      const list = e.getCoalescedEvents?.().length ? e.getCoalescedEvents() : [e]
+      for (const ev of list) { const [px, py] = pos(ev); engine.eraseTo(px, py) }
+      return
+    }
     if (started || e.pointerId !== tipId || e.buttons === 0) return // hover only (or the tip just started on this event)
     const list = e.getCoalescedEvents?.().length ? e.getCoalescedEvents() : [e]
     for (const ev of list) {
@@ -93,7 +110,7 @@ export function attachPointer(canvas, engine, getBarrelAction) {
   const onLost = (e) => { if (e.pointerType !== 'touch') { if (e.pointerId === tipId) endTip(); clearBarrel() } }
   const onWheel = (e) => { e.preventDefault(); const [x, y] = pos(e); engine.zoomAt(Math.exp(-e.deltaY * 0.0015), x, y) }
   const noMenu = (e) => e.preventDefault() // barrel press fires contextmenu
-  const onLeave = () => engine.hideCursor()
+  const onLeave = (e) => { engine.hideCursor(); if (e.pointerType !== 'touch' && tipId === null) clearBarrel() } // pen left the screen: drop a stuck barrel state
 
   const L = [['pointerdown', onDown], ['pointermove', onMove], ['pointerup', onUp], ['pointercancel', onUp], ['lostpointercapture', onLost], ['pointerleave', onLeave], ['contextmenu', noMenu]]
   L.forEach(([n, f]) => canvas.addEventListener(n, f))

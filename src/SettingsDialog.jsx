@@ -60,14 +60,16 @@ function Barrel() {
 }
 
 function Diag() { // listens on window because the dialog overlay covers the canvas
-  const [d, setD] = useState({ pointerType: '-', buttons: 0, pressure: 0, held: false, menu: 0 })
+  const [d, setD] = useState({ pointerType: '-', buttons: 0, pressure: 0, held: false, menu: 0, log: [] })
   useEffect(() => {
-    let tip = false, menu = 0
+    let tip = false, menu = 0, lastB = -1
+    const lines = [] // last raw events (only when the buttons value changes), to see what the driver really sends
+    const note = (kind, e) => { lines.push(`${kind} ${e.pointerType} btn${e.button} b=${e.buttons} p=${e.pressure.toFixed(2)}`); if (lines.length > 8) lines.shift() }
     const det = createBarrelDetector((held) => setD((x) => ({ ...x, held })))
-    const upd = (e) => setD((x) => ({ ...x, pointerType: e.pointerType, buttons: e.buttons, pressure: e.pressure, menu }))
-    const move = (e) => { upd(e); det.update(e, tip) }
-    const down = (e) => { if (e.button !== 2) tip = true; det.resetCount(); upd(e); det.update(e, tip) }
-    const up = (e) => { tip = false; upd(e); if (e.type === 'pointercancel') det.reset(); else det.update(e, false) }
+    const upd = (e, kind) => { if (kind) note(kind, e); setD((x) => ({ ...x, pointerType: e.pointerType, buttons: e.buttons, pressure: e.pressure, menu, log: [...lines] })) }
+    const move = (e) => { upd(e, e.buttons !== lastB ? 'move' : null); lastB = e.buttons; det.update(e, tip) }
+    const down = (e) => { if (e.button !== 2) tip = true; det.resetCount(); lastB = e.buttons; upd(e, 'down'); det.update(e, tip) }
+    const up = (e) => { tip = false; lastB = e.buttons; upd(e, e.type === 'pointercancel' ? 'cancel' : 'up'); if (e.type === 'pointercancel') det.reset(); else det.update(e, false) }
     const menuEv = (e) => { e.preventDefault(); menu++; setD((x) => ({ ...x, menu })) }
     const L = [['pointermove', move], ['pointerdown', down], ['pointerup', up], ['pointercancel', up], ['contextmenu', menuEv]]
     L.forEach(([n, f]) => window.addEventListener(n, f))
@@ -80,6 +82,7 @@ function Diag() { // listens on window because the dialog overlay covers the can
       {row('pointerType', d.pointerType)}{row('buttons', d.buttons)}{row('pressure', d.pressure.toFixed(3))}
       {row('contextmenu events', d.menu)}
       <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-300">barrelHeld</span><span className={`rounded px-2 font-semibold ${d.held ? 'bg-green-600 text-white' : ''}`}>{d.held ? 'YES' : 'no'}</span></div>
+      <pre className="mt-1 min-h-[7rem] overflow-hidden whitespace-pre-wrap text-[11px] leading-4 text-slate-500 dark:text-slate-300">{d.log.length ? d.log.join('\n') : 'last events appear here'}</pre>
     </div>
   )
 }

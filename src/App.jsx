@@ -36,7 +36,7 @@ function PenPopover({ s, eng }) {
           <div className="flex flex-wrap items-center gap-2">
             {PALETTE.map((c) => (
               <button key={c} aria-label={`Color ${c}`} onClick={() => eng().setColor(c)} style={{ background: c }}
-                className={`h-9 w-9 rounded-full border border-slate-300 ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-800 ${s.color === c ? 'ring-indigo-600' : 'ring-transparent'}`} />
+                className={`h-9 w-9 rounded-full border border-[#202124] ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-800 ${s.color === c ? 'ring-[#2196f3]' : 'ring-transparent'}`} />
             ))}
             <input type="color" aria-label="Custom color" value={s.color} onChange={(ev) => eng().setColor(ev.target.value)} className="h-9 w-9 cursor-pointer rounded-full border-0 bg-transparent p-0" />
           </div>

@@ -9,7 +9,7 @@ function Thumbs({ s, eng, onPick }) {
     <div className="flex max-w-full gap-2 overflow-x-auto">
       {s.pages.map((p, i) => (
         <button key={p.id} aria-label={`Page ${i + 1}`} onClick={() => { eng().goPage(i); onPick?.() }}
-          className={`relative shrink-0 overflow-hidden rounded-lg border-2 ${i === s.index ? 'border-indigo-600' : 'border-slate-300 dark:border-slate-600'}`}>
+          className={`relative shrink-0 overflow-hidden rounded-lg border-2 ${i === s.index ? 'border-[#2196f3]' : 'border-slate-300 dark:border-slate-600'}`}>
           <img src={p.thumb} alt="" className="h-16 w-auto" draggable={false} />
           <span className="absolute bottom-0 right-0 rounded-tl bg-black/60 px-1 text-[10px] text-white">{i + 1}</span>
         </button>
@@ -83,7 +83,7 @@ export function BgPopover({ s, eng }) {
         <Popover.Content side="right" sideOffset={10} collisionPadding={8} onOpenAutoFocus={(e) => e.preventDefault()} className={`${panel} z-50 grid grid-cols-3 gap-2 p-3`}>
           {BGS.map(([type, name]) => (
             <button key={type} onClick={() => eng().setBackground({ type, color: s.bg.color })}
-              className={`h-11 rounded-xl px-2 text-xs ${s.bg.type === type ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-100'}`}>{name}</button>
+              className={`h-11 rounded-xl border border-[#202124] px-2 text-xs ${s.bg.type === type ? 'bg-[#ffeb3b] text-[#202124]' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-100'}`}>{name}</button>
           ))}
           <label className="col-span-3 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">Custom color
             <input type="color" value={s.bg.color} onChange={(ev) => eng().setBackground({ type: 'custom', color: ev.target.value })} className="h-9 w-12 cursor-pointer border-0 bg-transparent p-0" />

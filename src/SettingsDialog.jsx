@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
-import { btn } from './ui.jsx'
+import { btn, panel } from './ui.jsx'
 import { ACTIONS } from './input/actions.js'
 import { comboOf } from './input/keymap.js'
 import { createBarrelDetector } from './input/barrel.js'
@@ -92,7 +92,7 @@ export function SettingsDialog({ open, onOpenChange }) {
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[min(34rem,94vw)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-4 text-slate-800 shadow-xl dark:bg-slate-800 dark:text-slate-100">
+        <Dialog.Content className={`${panel} fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[min(34rem,94vw)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-4 text-slate-800 dark:text-slate-100`}>
           <div className="flex items-center justify-between">
             <Dialog.Title className="text-base font-semibold">Settings</Dialog.Title>
             <Dialog.Close className={btn(false)} aria-label="Close"><X size={20} /></Dialog.Close>

@@ -35,7 +35,7 @@ export function ShapesPopover({ s, eng }) {
 export function NotesPopover({ s, eng }) {
   const [open, setOpen] = useState(false), [tab, setTab] = useState(0), file = useRef(null)
   const done = (fn) => () => { fn(); setOpen(false) }
-  const chip = (on) => `h-8 rounded-lg px-2 text-xs ${on ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-100'}`
+  const chip = (on) => `h-8 rounded-lg border border-[#202124] px-2 text-xs ${on ? 'bg-[#ffeb3b] text-[#202124]' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-100'}`
   return (
     <>
       <input ref={file} type="file" accept="image/*" hidden aria-label="Choose an image" onChange={(e) => { const f = e.target.files?.[0]; if (f) eng().addImage(f); e.target.value = ''; setOpen(false) }} />

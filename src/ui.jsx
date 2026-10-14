@@ -11,8 +11,8 @@ export function useCompact() {
   return c
 }
 
-export const btn = (active) => `grid h-[var(--btn)] w-[var(--btn)] shrink-0 place-items-center rounded-xl transition active:scale-95 disabled:opacity-30 ${active ? 'bg-indigo-600 text-white' : 'text-slate-700 hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-700'}`
-export const panel = 'rounded-2xl bg-white/95 shadow-lg ring-1 ring-black/5 backdrop-blur dark:bg-slate-800/95 dark:ring-white/10'
+export const btn = (active) => `grid h-[var(--btn)] w-[var(--btn)] shrink-0 place-items-center rounded-xl border border-[#202124] transition active:scale-95 disabled:opacity-30 ${active ? 'bg-[#ffeb3b] text-[#202124] shadow-[1px_2px_0_#202124]' : 'bg-white text-slate-800 hover:bg-blue-50 dark:border-black dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700'}`
+export const panel = 'rounded-[18px] border-2 border-[#202124] bg-white/95 shadow-[2px_3px_0_#202124] backdrop-blur dark:border-black dark:bg-slate-800/95 dark:shadow-[2px_3px_0_#000]'
 
 export function Btn({ label, active, disabled, onClick, children }) {
   return <button aria-label={label} title={label} disabled={disabled} onClick={onClick} className={btn(active)}>{children}</button>

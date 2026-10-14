@@ -156,7 +156,7 @@ export default function App() {
               <Popover.Trigger asChild><button aria-label="More" title="More tools, export and settings" className={btn(false)}><Ellipsis size={20} /></button></Popover.Trigger>
               <Popover.Portal>
                 <Popover.Content side="right" sideOffset={10} collisionPadding={8} onOpenAutoFocus={(e) => e.preventDefault()} className={`${panel} z-50 grid grid-cols-4 gap-1 p-2`}>
-                  {compact && <><ShapesPopover s={s} eng={eng} /><NotesPopover s={s} eng={eng} />{snapBtn}{laserBtn}<BgPopover s={s} eng={eng} /><Btn label="All notebooks" onClick={() => { setMore(false); goHome() }}><House size={20} /></Btn></>}
+                  {compact && <><ShapesPopover s={s} eng={eng} /><NotesPopover s={s} eng={eng} />{snapBtn}{laserBtn}<BgPopover s={s} eng={eng} /></>}
                   <Btn label="Zoom out" onClick={() => act('zoomOut')}><ZoomOut size={20} /></Btn>
                   <Btn label="Zoom in" onClick={() => act('zoomIn')}><ZoomIn size={20} /></Btn>
                   <ExportMenu eng={eng} />
@@ -189,7 +189,7 @@ export default function App() {
           )}
         </>
       )}
-      {s && !presenter && <PageBar s={s} eng={eng} compact={compact} fade={fade} />}
+      {s && !presenter && <PageBar s={s} eng={eng} compact={compact} fade={fade} onHome={goHome} />}
       {s?.editing && <TextEditor info={s.editing} eng={eng} />}
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       {presenter && (

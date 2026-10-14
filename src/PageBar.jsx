@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
-import { ChevronLeft, ChevronRight, FilePlus, Copy, Trash2, LayoutGrid, Grid3x3, BrushCleaning } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FilePlus, Copy, Trash2, LayoutGrid, Grid3x3, BrushCleaning, House } from 'lucide-react'
 import { btn, panel, Btn } from './ui.jsx'
 import Confirm from './Confirm.jsx'
 
@@ -19,7 +19,7 @@ function Thumbs({ s, eng, onPick }) {
 }
 
 // Phones: a small capsule in the top-right corner (prev / n of m / next / page menu). Everything else lives in the menu.
-function CompactPageBar({ s, eng, fade }) {
+function CompactPageBar({ s, eng, fade, onHome }) {
   const [menu, setMenu] = useState(false), [del, setDel] = useState(false)
   const row = 'flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs text-slate-700 hover:bg-slate-100 disabled:opacity-30 dark:text-slate-100 dark:hover:bg-slate-700'
   const run = (fn) => () => { fn(); setMenu(false) }
@@ -45,6 +45,7 @@ function CompactPageBar({ s, eng, fade }) {
             </Popover.Content>
           </Popover.Portal>
         </Popover.Root>
+        <Btn label="Back to notebooks" onClick={onHome}><House size={18} /></Btn>
       </div>
       {/* outside the popover: the popover unmounts the moment you tap the dialog, which would swallow the confirm tap */}
       <Confirm open={del} onOpenChange={setDel} title="Delete this page?" text="This can't be undone." action="Delete" onConfirm={() => eng().deletePage()} />
@@ -52,9 +53,9 @@ function CompactPageBar({ s, eng, fade }) {
   )
 }
 
-export function PageBar({ s, eng, compact, fade = '' }) {
+export function PageBar({ s, eng, compact, fade = '', onHome }) {
   const [open, setOpen] = useState(false)
-  if (compact) return <CompactPageBar s={s} eng={eng} fade={fade} />
+  if (compact) return <CompactPageBar s={s} eng={eng} fade={fade} onHome={onHome} />
   return (
     <div className="absolute bottom-2 left-1/2 flex max-w-[calc(100%-10rem)] -translate-x-1/2 flex-col items-center gap-1">
       {open && <div className={`${panel} flex max-w-full p-2`}><Thumbs s={s} eng={eng} /></div>}

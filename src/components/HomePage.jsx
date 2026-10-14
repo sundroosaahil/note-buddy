@@ -59,8 +59,8 @@ export default function HomePage({ onOpen }) {
       <main className="home-main">
         <header className="home-masthead">
           <div className="home-brand">
-            <div className="home-brand-mark"><PenIcon className="h-5 w-5" /></div>
-            <div><h1>Notes Buddy</h1></div>
+            <div className="home-brand-mark"><img src="/icon.svg" alt="" /></div>
+            <div><h1>Notebook Buddy</h1></div>
           </div>
         </header>
 

@@ -24,7 +24,7 @@
   --brick: #ff8178;
 }
 .home-main { max-width: 1060px; margin: 0 auto; padding: 0 42px 48px; }
-.home-masthead { height: 84px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--rule); }
+.home-masthead { height: 84px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #202124; }
 .home-brand { display: flex; align-items: center; gap: 12px; }
 .home-brand-mark { width: 40px; height: 40px; display: grid; place-items: center; border: 2px solid #202124; border-radius: 13px; color: #fff; background: #4285f4; box-shadow: 2px 2px 0 #202124; }
 .home-brand h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 18px; font-weight: 700; letter-spacing: -.03em; }
@@ -71,7 +71,7 @@
 .bookshelf-heading .home-eyebrow { margin-bottom: 6px; }
 .bookshelf-heading h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 500; letter-spacing: -.035em; }
 .bookshelf-count { margin: 0; color: var(--muted); font-size: 11px; }
-.home-search { display: flex; align-items: center; gap: 9px; width: 235px; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 13px; color: var(--muted); background: var(--paper-light); }
+.home-search { display: flex; align-items: center; gap: 9px; width: 235px; padding: 9px 12px; border: 2px solid #202124; border-radius: 13px 16px 12px 15px; color: var(--muted); background: var(--paper-light); }
 .home-search-input { width: 100%; border: 0; outline: 0; color: var(--ink); background: transparent; font: inherit; font-size: 12px; }
 .home-search-input::placeholder { color: var(--muted); }
 .home-search:focus-within { border-color: var(--green); }
@@ -82,15 +82,16 @@
 .notebook-card:hover { transform: translate(-1px,-2px) rotate(-.25deg); box-shadow: 5px 7px 0 #202124; }
 .notebook-cover-button { position: relative; display: block; width: 100%; aspect-ratio: 1.55; overflow: hidden; border: 0; border-radius: 16px 19px 0 0; padding: 0; background: #e7e0d0; text-align: left; cursor: pointer; }
 .notebook-cover-button:focus-visible { outline: 3px solid #bd8665; outline-offset: -3px; }
-.notebook-cover-art { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; overflow: hidden; padding: 19px 25px 18px 31px; color: #fff; background: #f44336; }
+.notebook-cover-art { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; overflow: hidden; padding: 19px 25px 18px 31px; color: #202124; background: #f44336; }
 .tone-1 .notebook-cover-art { background: #ff9800; }
-.tone-2 .notebook-cover-art { color: #202124; background: #ffeb3b; }
+.tone-2 .notebook-cover-art { background: #ffeb3b; }
 .tone-2 .cover-kicker, .tone-2 .cover-number { color: rgba(32,33,36,.75); }
 .tone-2 .cover-rule, .tone-2 .cover-mark { border-color: #202124; background-color: transparent; }
 .tone-2 .cover-rule { background: #202124; }
 .tone-3 .notebook-cover-art { background: #4caf50; }
 .tone-4 .notebook-cover-art { background: #2196f3; }
-.tone-5 .notebook-cover-art { background: #8e24aa; }
+.tone-5 .notebook-cover-art { color: #fff; background: #8e24aa; }
+.tone-5 .cover-kicker, .tone-5 .cover-number { color: rgba(255,255,255,.82); }
 .notebook-cover-art::after { position: absolute; content: ""; inset: 8px; border: 1.5px solid rgba(32,33,36,.78); border-radius: 11px 14px 10px 13px; pointer-events: none; }
 .cover-spine { position: absolute; z-index: 1; inset: 0 auto 0 0; width: 15px; border-right: 2px solid #202124; background: rgba(255,255,255,.16); }
 .cover-kicker { color: rgba(255,255,255,.72); font-size: 7px; font-weight: 700; letter-spacing: .18em; }
@@ -137,9 +138,9 @@
   .new-book-label small { font-size: 10px; }
   .new-book-icon { width: 43px; height: 43px; }
   .bookshelf-section { padding-top: 20px; }
-  .bookshelf-heading { margin-bottom: 15px; }
+  .bookshelf-heading { flex-wrap: wrap; margin-bottom: 15px; }
   .bookshelf-heading h2 { font-size: 22px; }
-.home-search { width: 100%; }
+  .home-search { flex: 1 0 100%; width: 100%; }
   .notebook-grid { grid-template-columns: 1fr; gap: 11px; }
   .notebook-cover-button { aspect-ratio: 1.75; }
   .cover-title { font-size: 24px; }

@@ -145,18 +145,18 @@ export default function App() {
             <PenPopover s={s} eng={eng} />
             <Btn label="Eraser" active={s.baseTool === 'eraser'} onClick={() => act('toggleEraser')}><Eraser size={20} /></Btn>
             <Btn label="Select: tap an item, or drag a loop to lasso" active={s.baseTool === 'select'} onClick={() => eng().setTool(s.baseTool === 'select' ? s.drawTool : 'select')}><MousePointer2 size={20} /></Btn>
-            <ShapesPopover s={s} eng={eng} />
-            <NotesPopover s={s} eng={eng} />
+            {!compact && <ShapesPopover s={s} eng={eng} />}
+            {!compact && <NotesPopover s={s} eng={eng} />}
             {!compact && snapBtn}
             {!compact && laserBtn}
             {!compact && <BgPopover s={s} eng={eng} />}
             <Btn label="Undo" disabled={!s.canUndo} onClick={() => act('undo')}><Undo2 size={20} /></Btn>
             <Btn label="Redo" disabled={!s.canRedo} onClick={() => act('redo')}><Redo2 size={20} /></Btn>
             <Popover.Root open={more} onOpenChange={setMore}>
-              <Popover.Trigger asChild><button aria-label="More" title="More: zoom, export, fullscreen, settings" className={btn(false)}><Ellipsis size={20} /></button></Popover.Trigger>
+              <Popover.Trigger asChild><button aria-label="More" title="More tools, export and settings" className={btn(false)}><Ellipsis size={20} /></button></Popover.Trigger>
               <Popover.Portal>
                 <Popover.Content side="right" sideOffset={10} collisionPadding={8} onOpenAutoFocus={(e) => e.preventDefault()} className={`${panel} z-50 grid grid-cols-4 gap-1 p-2`}>
-                  {compact && <>{snapBtn}{laserBtn}<BgPopover s={s} eng={eng} /><Btn label="All notebooks" onClick={() => { setMore(false); goHome() }}><House size={20} /></Btn></>}
+                  {compact && <><ShapesPopover s={s} eng={eng} /><NotesPopover s={s} eng={eng} />{snapBtn}{laserBtn}<BgPopover s={s} eng={eng} /><Btn label="All notebooks" onClick={() => { setMore(false); goHome() }}><House size={20} /></Btn></>}
                   <Btn label="Zoom out" onClick={() => act('zoomOut')}><ZoomOut size={20} /></Btn>
                   <Btn label="Zoom in" onClick={() => act('zoomIn')}><ZoomIn size={20} /></Btn>
                   <ExportMenu eng={eng} />

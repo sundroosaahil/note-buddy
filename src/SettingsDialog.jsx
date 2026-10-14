@@ -7,7 +7,7 @@ import { comboOf } from './input/keymap.js'
 import { createBarrelDetector } from './input/barrel.js'
 import { settings, saveSettings, resetKeymap } from './store/settings.js'
 
-const LABELS = { undo: 'Undo', redo: 'Redo', toggleEraser: 'Toggle pen / eraser', holdPan: 'Hold to pan', zoomIn: 'Zoom in', zoomOut: 'Zoom out', nextPage: 'Next page', prevPage: 'Previous page', cycleColor: 'Cycle color' }
+const LABELS = { undo: 'Undo', redo: 'Redo', toggleEraser: 'Toggle pen / eraser (hold: clear page)', holdPan: 'Hold to pan (tap: Select tool)', zoomIn: 'Zoom in', zoomOut: 'Zoom out', nextPage: 'Next page', prevPage: 'Previous page', cycleColor: 'Cycle color', laser: 'Laser pointer' }
 const pretty = (c) => c.replace(/Key([A-Z])/, '$1').replace(/Digit(\d)/, '$1').replace('BracketLeft', '[').replace('BracketRight', ']').replace('Numpad', 'Num ').replace('Add', '+').replace('Subtract', '−')
 const h = 'mb-1 mt-4 text-sm font-semibold'
 
@@ -87,7 +87,27 @@ function Diag() { // listens on window because the dialog overlay covers the can
   )
 }
 
+function KeyDiag() {
+  const [lines, setLines] = useState([])
+  useEffect(() => {
+    const t0 = {}, add = (s) => setLines((l) => [...l.slice(-6), s]), name = (e) => `${e.ctrlKey ? 'Ctrl+' : ''}${e.altKey ? 'Alt+' : ''}${e.shiftKey ? 'Shift+' : ''}${e.code || e.key}`
+    const down = (e) => { if (e.repeat) { add(`repeat ${name(e)}`); return } t0[e.code] = performance.now(); add(`down   ${name(e)}`) }
+    const up = (e) => { const d = t0[e.code] != null ? `${Math.round(performance.now() - t0[e.code])} ms` : '?'; delete t0[e.code]; add(`up     ${name(e)}   held ${d}`) }
+    window.addEventListener('keydown', down, true); window.addEventListener('keyup', up, true)
+    return () => { window.removeEventListener('keydown', down, true); window.removeEventListener('keyup', up, true) }
+  }, [])
+  return <div className="rounded-xl bg-slate-100 p-3 text-sm dark:bg-slate-900">
+    <p className="text-xs text-slate-500 dark:text-slate-300">Press an Express Key (tap it, then hold it). Shortcuts are paused while this window is open.</p>
+    <pre className="mt-1 min-h-[7rem] overflow-hidden whitespace-pre-wrap text-[11px] leading-4 text-slate-500 dark:text-slate-300">{lines.length ? lines.join('\n') : 'key events appear here'}</pre>
+  </div>
+}
+
 export function SettingsDialog({ open, onOpenChange }) {
+  useEffect(() => {
+    if (!open) return
+    settings.dialogOpen = true
+    return () => { settings.dialogOpen = false }
+  }, [open])
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -101,6 +121,7 @@ export function SettingsDialog({ open, onOpenChange }) {
           <h3 className={h}>Keys</h3><Keys />
           <h3 className={h}>Pen barrel button</h3><Barrel />
           <h3 className={h}>Pen diagnostics</h3><Diag />
+          <h3 className={h}>Key diagnostics</h3><KeyDiag />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

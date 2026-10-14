@@ -96,7 +96,7 @@ export class Engine {
     return { ping: this.ping, index: this.index, count: this.pages.length, bg: this.page.bg, pages: this.pages.map((p) => ({ id: p.id, thumb: this.thumbOf(p) })), tool: this.effectiveTool, baseTool: this.tool, zoom: Math.round(this.page.scale * 100),
       canUndo: this.page.undo.length > 0, canRedo: this.page.redo.length > 0,
       color: this.color, width: this.width, opacity: this.opacity, drawTool: this.lastDraw, eraserRadius: this.eraserRadius, eraserMode: this.eraserMode, holdPan: this.holdPan,
-      sel: this.sel.size ? this.selInfo() : null, editing: this.editing ? this.editInfo() : null, shapeKind: this.shapeKind, shapeFill: this.shapeFill, shapeFillOpacity: this.shapeFillOpacity, snap: this.snap, hasClip: !!this.clip }
+      sel: this.sel.size ? this.selInfo() : null, editing: this.editing ? this.editInfo() : null, shapeKind: this.shapeKind, shapeFill: this.shapeFill, shapeFillOpacity: this.shapeFillOpacity, snap: this.snap, hasClip: !!this.clip, hint: this.hint || null }
   }
   emit() { this.onChange(this.snapshot()); this.save?.schedule() }
   emitSoon() { clearTimeout(this.t); this.t = setTimeout(() => this.emit(), 80) }
@@ -107,6 +107,12 @@ export class Engine {
     if (t !== 'select') { this.sel = new Set(); this.tf = this.lasso = this.selDown = null } // the selection only exists while the Select tool is active
     this.ping = (this.ping || 0) + 1; this.tool = t; if (t === 'pen' || t === 'highlighter') this.lastDraw = t; this.emit() }
   toggleEraser() { this.setTool(this.tool === 'eraser' ? this.lastDraw : 'eraser') }
+  toggleSelect() { this.setTool(this.tool === 'select' ? this.lastDraw : 'select') }
+  toggleLaser() { this.setTool(this.tool === 'laser' ? this.lastDraw : 'laser') }
+  setHint(text, ms = 0) {
+    clearTimeout(this.hintT); this.hint = text; this.emit()
+    if (ms) this.hintT = setTimeout(() => { this.hint = null; this.emit() }, ms)
+  }
   setColor(c) { this.color = c; if (this.tool === 'eraser') this.setTool(this.lastDraw); else this.emit() }
   cycleColor() { this.setColor(PALETTE[(PALETTE.indexOf(this.color) + 1) % PALETTE.length]) }
   setWidth(w) { this.width = w; this.emit() }
@@ -262,13 +268,13 @@ export class Engine {
   newBoard() { this.leavePage(); this.pages = [createPage()]; this.index = 0; this.dirty = true; this.schedule(); this.emit(); this.save?.flush() }
   undo() { this.endEdit(); if (H.undo(this.page)) { this.pruneSel(); this.invalidate(); this.emit(); this.save?.flush() } }
   redo() { this.endEdit(); if (H.redo(this.page)) { this.pruneSel(); this.invalidate(); this.emit(); this.save?.flush() } }
-  panBy(dx, dy) { this.page.ox += dx; this.page.oy += dy; this.invalidate() }
+  panBy(dx, dy) { this.page.ox += dx; this.page.oy += dy; this.panned = true; this.invalidate() }
   zoomAt(f, cx, cy) {
     const p = this.page, ns = Math.max(0.2, Math.min(8, p.scale * f)), k = ns / p.scale
     p.ox = cx - (cx - p.ox) * k; p.oy = cy - (cy - p.oy) * k; p.scale = ns
     this.invalidate(); this.emitSoon()
   }
   zoomBy(f) { this.zoomAt(f, this.w / 2, this.h / 2) }
-  destroy() { cancelAnimationFrame(this.raf); clearTimeout(this.t); clearTimeout(this.snapT) }
+  destroy() { cancelAnimationFrame(this.raf); clearTimeout(this.t); clearTimeout(this.snapT); clearTimeout(this.hintT) }
 }
 Object.assign(Engine.prototype, selectionMethods, objectMethods) // selection/transform + object operations live in their own files

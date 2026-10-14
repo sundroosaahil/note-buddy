@@ -96,7 +96,7 @@ export default function App() {
       }
       const ro = new ResizeObserver(() => engine.resize()); ro.observe(canvas)
       const offP = attachPointer(canvas, engine, () => settings.barrelAction, () => settings.fingerDraw)
-      const offK = attachKeys(engine, () => settings.keymap, () => settings.capturing)
+      const offK = attachKeys(engine, () => settings.keymap, () => settings.capturing || settings.dialogOpen)
       const down = new Set(), onDown = (e) => { down.add(e.pointerId); setDrawing(true) }, onUp = (e) => { down.delete(e.pointerId); if (!down.size) setDrawing(false) }
       canvas.addEventListener('pointerdown', onDown); window.addEventListener('pointerup', onUp); window.addEventListener('pointercancel', onUp)
       engine.emit()
@@ -211,6 +211,7 @@ export default function App() {
       {s && !presenter && <PageBar s={s} eng={eng} compact={compact} fade={fade} onHome={goHome} />}
       {s?.editing && <TextEditor info={s.editing} eng={eng} />}
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      {s?.hint && <div role="status" className="pointer-events-none absolute left-1/2 top-4 z-40 -translate-x-1/2 rounded-full bg-slate-900/85 px-4 py-2 text-sm font-medium text-white shadow-lg">{s.hint}</div>}
       {presenter && (
         <button aria-label="Show toolbar" onClick={() => setPresenter(false)}
           className="absolute left-0 top-1/2 h-16 w-4 -translate-y-1/2 rounded-r-lg bg-slate-500/25 active:w-6 active:bg-slate-500/60" />

@@ -166,8 +166,8 @@ export const objectMethods = {
     const r = recognize(s.pts); if (!r) return
     const st = { stroke: s.color, strokeWidth: s.width }
     if (r.kind === 'line') this.snapped = mkShape('line', Math.min(r.x1, r.x2), Math.min(r.y1, r.y2), Math.abs(r.x2 - r.x1), Math.abs(r.y2 - r.y1), { flipX: r.x1 > r.x2, flipY: r.y1 > r.y2, ...st })
-    else if (r.kind === 'ellipse') this.snapped = mkShape('ellipse', r.cx - r.rx, r.cy - r.ry, r.rx * 2, r.ry * 2, st)
-    else this.snapped = mkShape('rect', r.x, r.y, r.w, r.h, st)
+    else if (r.kind === 'ellipse') this.snapped = mkShape('ellipse', r.cx - r.rx, r.cy - r.ry, r.rx * 2, r.ry * 2, { ...st, rot: r.rot })
+    else this.snapped = mkShape('rect', r.cx - r.w / 2, r.cy - r.h / 2, r.w, r.h, { ...st, rot: r.rot })
     this.schedule()
   },
 

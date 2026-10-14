@@ -100,6 +100,17 @@ const undoLen = (e) => e.page.undo.length
   // snapping off, highlighter, or handwriting: stays ink
   const f = mk(); f.beginStroke(10, 10, 0.5); for (let i = 1; i < 30; i++) f.extendStroke(10 + i * 4, 10 + (i % 2) * 30, 0.5); f.trySnap(); assert.equal(f.snapped, null); f.endStroke(); assert.equal(f.page.strokes.length, 1)
 }
+{ // hand-drawn rectangles snap too: level stays level, a clear tilt is kept, undo returns the stroke
+  const { handRect } = await import('./handdrawn.mjs')
+  for (const [tilt, want] of [[0, 0], [4, 0], [-5, 0], [15, 15], [-20, -20]]) {
+    const e = mk(); e.snap = true; const pts = handRect(220, 120, { seed: 3, tilt }); e.beginStroke(pts[0].x, pts[0].y, 0.5); for (const p of pts.slice(1)) e.extendStroke(p.x, p.y, 0.5)
+    e.trySnap(); assert.ok(e.snapped, `tilt ${tilt}: recognised`); assert.equal(e.snapped.shape, 'rect'); assert.ok(Math.abs((e.snapped.rot * 180) / Math.PI - want) < 2.5, `tilt ${tilt}: rot ${(e.snapped.rot * 180) / Math.PI}`)
+    assert.ok(Math.abs(e.snapped.w - 220) < 30 && Math.abs(e.snapped.h - 120) < 30, 'size close to what was drawn')
+    e.endStroke(); assert.equal(e.page.strokes.length, 0); assert.equal(e.page.objects[0].shape, 'rect'); e.undo(); assert.equal(e.page.strokes.length, 1); assert.equal(e.page.objects.length, 0)
+  }
+  const sq = mk(); sq.snap = true; const sp = handRect(150, 150, { seed: 5, tilt: 3 }); sq.beginStroke(sp[0].x, sp[0].y, 0.5); for (const p of sp.slice(1)) sq.extendStroke(p.x, p.y, 0.5)
+  sq.trySnap(); assert.equal(sq.snapped.shape, 'rect'); assert.equal(sq.snapped.w, sq.snapped.h, 'a near-square becomes an exact square')
+}
 { // the hold timer: pen stays still 600 ms -> snaps; keeps moving -> does not
   const e = mk(); e.snap = true; e.beginStroke(100, 100, 0.5); for (let i = 1; i <= 30; i++) e.extendStroke(100 + i * 10, 100 + i * 2, 0.5)
   assert.equal(e.snapped, null); await new Promise((r) => setTimeout(r, 700)); assert.equal(e.snapped?.shape, 'line'); e.endStroke(); assert.equal(e.page.objects[0].shape, 'line')

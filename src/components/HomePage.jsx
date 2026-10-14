@@ -104,7 +104,7 @@ export default function HomePage({ onOpen }) {
                   </h3>
                   <ul className="notebook-grid">
                     {g.items.map((n, index) => (
-                      <NotebookCard key={n.id} nb={n} tone={index % 4} onOpen={() => onOpen(n.id)} />
+                      <NotebookCard key={n.id} nb={n} tone={index % 6} onOpen={() => onOpen(n.id)} />
                     ))}
                   </ul>
                 </div>

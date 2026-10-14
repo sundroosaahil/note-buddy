@@ -1,6 +1,6 @@
 import * as Popover from '@radix-ui/react-popover'
 import { Palette, CopyPlus, Copy, BringToFront, SendToBack, Lock, LockOpen, Trash2, AlignLeft, AlignCenter, AlignRight } from 'lucide-react'
-import { btn, panel, Btn } from './ui.jsx'
+import { btn, panel, Btn, useCompact } from './ui.jsx'
 import { Slide, Swatches } from './controls.jsx'
 import { PALETTE } from './engine/Engine.js'
 import { STICKY_COLORS } from './engine/objects.js'
@@ -40,9 +40,9 @@ function StyleControls({ sel, eng }) {
 
 // Floating action bar ("context menu") above the selection; below it when there is no room, hidden while dragging or typing.
 export function SelectionBar({ s, eng }) {
-  const sel = s.sel
+  const sel = s.sel, compact = useCompact()
   if (!sel || sel.busy || s.editing) return null
-  const W = 7 * 46 + 12, vw = window.innerWidth, vh = window.innerHeight, r = sel.rect
+  const W = 7 * (compact ? 38 : 46) + 12, vw = window.innerWidth, vh = window.innerHeight, r = sel.rect
   const left = Math.max(8, Math.min(vw - W - 8, r.x + r.w / 2 - W / 2))
   const top = r.y > 110 ? r.y - 104 : Math.min(vh - 64, r.y + r.h + 16)
   return (

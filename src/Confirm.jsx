@@ -1,10 +1,10 @@
 import * as AlertDialog from '@radix-ui/react-alert-dialog'
 import { panel } from './ui.jsx'
 
-export default function Confirm({ title, text, action, onConfirm, trigger }) {
+export default function Confirm({ title, text, action, onConfirm, trigger, open, onOpenChange }) {
   return (
-    <AlertDialog.Root>
-      <AlertDialog.Trigger asChild>{trigger}</AlertDialog.Trigger>
+    <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
+      {trigger && <AlertDialog.Trigger asChild>{trigger}</AlertDialog.Trigger>}
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
         <AlertDialog.Content className={`${panel} fixed left-1/2 top-1/2 z-50 w-[min(22rem,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 p-5`}>

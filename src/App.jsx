@@ -11,7 +11,7 @@ import { Slide } from './controls.jsx'
 import { ShapesPopover, NotesPopover } from './ToolPopovers.jsx'
 import { SelectionBar } from './SelectionBar.jsx'
 import { TextEditor } from './TextEditor.jsx'
-import { btn, panel, Btn } from './ui.jsx'
+import { btn, panel, Btn, useCompact } from './ui.jsx'
 import { PageBar, BgPopover } from './PageBar.jsx'
 import { ExportMenu } from './ExportMenu.jsx'
 import { loadBoard as loadLegacyBoard, pruneBlobs } from './store/db.js'
@@ -57,6 +57,8 @@ export default function App() {
   const [hudOn, setHudOn] = useState(false)
   const [fs, setFs] = useState(false)
   const [more, setMore] = useState(false), [settingsOpen, setSettingsOpen] = useState(false)
+  const compact = useCompact()
+  const [drawing, setDrawing] = useState(false) // a finger/pen is down on the board: phones fade the bars so they never hide the writing
 
   useEffect(() => {
     if (!activeNotebookId) { setS(null); return }
@@ -84,8 +86,10 @@ export default function App() {
       const ro = new ResizeObserver(() => engine.resize()); ro.observe(canvas)
       const offP = attachPointer(canvas, engine, () => settings.barrelAction)
       const offK = attachKeys(engine, () => settings.keymap, () => settings.capturing)
+      const down = new Set(), onDown = (e) => { down.add(e.pointerId); setDrawing(true) }, onUp = (e) => { down.delete(e.pointerId); if (!down.size) setDrawing(false) }
+      canvas.addEventListener('pointerdown', onDown); window.addEventListener('pointerup', onUp); window.addEventListener('pointercancel', onUp)
       engine.emit()
-      cleanup = () => { ro.disconnect(); offP(); offK(); engine.save.destroy(); engine.destroy() }
+      cleanup = () => { ro.disconnect(); offP(); offK(); canvas.removeEventListener('pointerdown', onDown); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp); setDrawing(false); engine.save.destroy(); engine.destroy() }
     })()
     return () => { dead = true; cleanup() }
   }, [activeNotebookId])
@@ -123,6 +127,9 @@ export default function App() {
   const toggleFs = () => { if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.().catch(() => {}) }
 
   const eng = () => engineRef.current, act = (n) => runAction(eng(), n)
+  const snapBtn = s && <Btn label="Shape snapping: hold the pen still at the end of a stroke to straighten it" active={s.snap} onClick={() => eng().setSnap(!s.snap)}><WandSparkles size={20} /></Btn>
+  const laserBtn = s && <Btn label="Laser pointer" active={s.baseTool === 'laser'} onClick={() => eng().setTool(s.baseTool === 'laser' ? s.drawTool : 'laser')}><Crosshair size={20} /></Btn>
+  const fade = compact && drawing ? 'opacity-25' : ''
   const openNotebook = (id) => setActiveNotebookId(id)
   const goHome = async () => { await engineRef.current?.save?.flush(); setActiveNotebookId(null) }
   if (!activeNotebookId) return <HomePage onOpen={openNotebook} />
@@ -131,23 +138,25 @@ export default function App() {
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full touch-none" />
       {s && !presenter && (
         <>
-          <button aria-label="All notebooks" title="All notebooks" onClick={goHome}
-            className={`${btn(false)} absolute right-3 top-3 z-20`}><House size={20} /></button>
-          <div className={`${panel} absolute left-2 top-1/2 flex max-h-[96%] -translate-y-1/2 flex-col gap-1 overflow-y-auto p-1.5 [@media(max-height:520px)]:grid [@media(max-height:520px)]:grid-cols-2`} /* short phone screens: two columns */>
+          {!compact && <button aria-label="All notebooks" title="All notebooks" onClick={goHome}
+            className={`${btn(false)} absolute right-3 top-3 z-20`}><House size={20} /></button>}
+          <div className={`${panel} absolute top-1/2 flex max-h-[96%] -translate-y-1/2 flex-col overflow-y-auto transition-opacity duration-200 ${compact ? 'gap-0.5 p-1' : 'left-2 gap-1 p-1.5'} ${fade}`}
+            style={compact ? { left: 'max(0.5rem, env(safe-area-inset-left))' } : undefined} /* phones: one slim column, secondary tools live in More */>
             <PenPopover s={s} eng={eng} />
             <Btn label="Eraser" active={s.baseTool === 'eraser'} onClick={() => act('toggleEraser')}><Eraser size={20} /></Btn>
             <Btn label="Select: tap an item, or drag a loop to lasso" active={s.baseTool === 'select'} onClick={() => eng().setTool(s.baseTool === 'select' ? s.drawTool : 'select')}><MousePointer2 size={20} /></Btn>
             <ShapesPopover s={s} eng={eng} />
             <NotesPopover s={s} eng={eng} />
-            <Btn label="Shape snapping: hold the pen still at the end of a stroke to straighten it" active={s.snap} onClick={() => eng().setSnap(!s.snap)}><WandSparkles size={20} /></Btn>
-            <Btn label="Laser pointer" active={s.baseTool === 'laser'} onClick={() => eng().setTool(s.baseTool === 'laser' ? s.drawTool : 'laser')}><Crosshair size={20} /></Btn>
-            <BgPopover s={s} eng={eng} />
+            {!compact && snapBtn}
+            {!compact && laserBtn}
+            {!compact && <BgPopover s={s} eng={eng} />}
             <Btn label="Undo" disabled={!s.canUndo} onClick={() => act('undo')}><Undo2 size={20} /></Btn>
             <Btn label="Redo" disabled={!s.canRedo} onClick={() => act('redo')}><Redo2 size={20} /></Btn>
             <Popover.Root open={more} onOpenChange={setMore}>
               <Popover.Trigger asChild><button aria-label="More" title="More: zoom, export, fullscreen, settings" className={btn(false)}><Ellipsis size={20} /></button></Popover.Trigger>
               <Popover.Portal>
                 <Popover.Content side="right" sideOffset={10} collisionPadding={8} onOpenAutoFocus={(e) => e.preventDefault()} className={`${panel} z-50 grid grid-cols-4 gap-1 p-2`}>
+                  {compact && <>{snapBtn}{laserBtn}<BgPopover s={s} eng={eng} /><Btn label="All notebooks" onClick={() => { setMore(false); goHome() }}><House size={20} /></Btn></>}
                   <Btn label="Zoom out" onClick={() => act('zoomOut')}><ZoomOut size={20} /></Btn>
                   <Btn label="Zoom in" onClick={() => act('zoomIn')}><ZoomIn size={20} /></Btn>
                   <ExportMenu eng={eng} />
@@ -160,8 +169,17 @@ export default function App() {
             </Popover.Root>
           </div>
           <SelectionBar s={s} eng={eng} />
-          {s.baseTool === 'eraser' && (
-            <div className={`${panel} absolute left-[4.5rem] top-1/2 flex -translate-y-1/2 flex-col items-center gap-1 p-1.5 [@media(max-height:520px)]:left-[8.5rem]`}>
+          {s.baseTool === 'eraser' && compact && (
+            <div className={`${panel} absolute top-2 flex items-center gap-0.5 p-1 transition-opacity duration-200 ${fade}`} style={{ left: 'calc(max(0.5rem, env(safe-area-inset-left)) + 3.25rem)' }}>
+              <Btn label="Precision eraser: erases only the part you touch" active={s.eraserMode === 'precise'} onClick={() => eng().setEraserMode('precise')}><span className="text-[9px]">Precise</span></Btn>
+              <Btn label="Stroke eraser: removes every stroke you touch" active={s.eraserMode === 'stroke'} onClick={() => eng().setEraserMode('stroke')}><span className="text-[9px]">Stroke</span></Btn>
+              <Btn label="Smaller eraser" onClick={() => eng().adjustEraser(-6)}><Minus size={18} /></Btn>
+              <span className="w-9 text-center text-xs text-slate-600 dark:text-slate-300">{s.eraserRadius}px</span>
+              <Btn label="Bigger eraser" onClick={() => eng().adjustEraser(6)}><Plus size={18} /></Btn>
+            </div>
+          )}
+          {s.baseTool === 'eraser' && !compact && (
+            <div className={`${panel} absolute left-[4.5rem] top-1/2 flex -translate-y-1/2 flex-col items-center gap-1 p-1.5`}>
               <Btn label="Precision eraser: erases only the part you touch" active={s.eraserMode === 'precise'} onClick={() => eng().setEraserMode('precise')}><span className="text-[10px]">Precise</span></Btn>
               <Btn label="Stroke eraser: removes every stroke you touch" active={s.eraserMode === 'stroke'} onClick={() => eng().setEraserMode('stroke')}><span className="text-[10px]">Stroke</span></Btn>
               <Btn label="Bigger eraser" onClick={() => eng().adjustEraser(6)}><Plus size={20} /></Btn>
@@ -171,12 +189,12 @@ export default function App() {
           )}
         </>
       )}
-      {s && !presenter && <PageBar s={s} eng={eng} />}
+      {s && !presenter && <PageBar s={s} eng={eng} compact={compact} fade={fade} />}
       {s?.editing && <TextEditor info={s.editing} eng={eng} />}
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       {presenter && (
         <button aria-label="Show toolbar" onClick={() => setPresenter(false)}
-          className="absolute left-0 top-1/2 h-14 w-3 -translate-y-1/2 rounded-r-lg bg-slate-500/30 hover:w-6 hover:bg-slate-500/60" />
+          className="absolute left-0 top-1/2 h-16 w-4 -translate-y-1/2 rounded-r-lg bg-slate-500/25 active:w-6 active:bg-slate-500/60" />
       )}
       {s && !presenter && (
         <div className={`pointer-events-none absolute bottom-2 right-3 rounded-lg bg-slate-900/60 px-2 py-1 text-xs text-white transition-opacity duration-500 ${hudOn ? 'opacity-100' : 'opacity-0'}`}>{s.holdPan ? 'pan' : s.tool} · {s.zoom}%</div>

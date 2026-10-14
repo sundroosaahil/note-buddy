@@ -6,7 +6,7 @@ export function createAutosave(engine) {
   const flush = () => {
     clearTimeout(t)
     const changed = engine.pages.filter((p) => p._sv !== p.rev)
-    const records = changed.map((p) => ({ id: p.id, strokes: p.strokes, scale: p.scale, ox: p.ox, oy: p.oy, bg: p.bg }))
+    const records = changed.map((p) => ({ id: p.id, strokes: p.strokes, objects: p.objects, scale: p.scale, ox: p.ox, oy: p.oy, bg: p.bg }))
     const revs = changed.map((p) => p.rev); changed.forEach((p) => (p._sv = p.rev))
     const meta = { order: engine.pages.map((p) => p.id), index: engine.index }
     q = q.then(() => saveBoard(records, meta)).catch((e) => { console.warn('autosave failed', e); changed.forEach((p, i) => { if (p._sv === revs[i]) p._sv = -1 }) })

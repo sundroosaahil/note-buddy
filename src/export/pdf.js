@@ -12,6 +12,7 @@ async function saveFile(blob, name) {
 
 export async function exportPDF(engine) {
   const { jsPDF } = await import('jspdf') // loaded on demand, still bundled locally (no CDN)
+  await engine.ensureImages() // inserted pictures must be decoded before pages are rendered
   let pdf = null, n = 0
   for (const page of engine.pages) { // one page at a time so we never hold many big canvases in memory
     const c = renderPage(engine, page); if (!c) continue
@@ -28,6 +29,7 @@ export async function exportPDF(engine) {
 }
 
 export async function exportPNG(engine) {
+  await engine.ensureImages()
   const c = renderPage(engine, engine.page); if (!c) return 'This page is empty'
   const blob = await new Promise((r) => c.toBlob(r, 'image/png'))
   const name = `class-${stamp()}-page${engine.index + 1}.png`

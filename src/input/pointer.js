@@ -3,7 +3,7 @@ import { createBarrelDetector } from './barrel.js'
 
 export function attachPointer(canvas, engine, getBarrelAction) {
   const touches = new Map()
-  let tipId = null, mode = null, last = null, gest = null
+  let tipId = null, mode = null, last = null, gest = null, lx = 0, ly = 0, touchTap = null // lx/ly: last tip position, touchTap: a finger that might be a tap
   let barrelOn = false, holdErase = false // holdErase: erasing by moving the pen while the barrel button is held (hovering or touching)
   const pos = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top] }
   const pressure = (e) => (e.pointerType === 'pen' ? Math.max(e.pressure, 0.05) : 0.5)
@@ -30,38 +30,47 @@ export function attachPointer(canvas, engine, getBarrelAction) {
   const clearBarrel = () => det.reset()
 
   function gestureState() { const [a, b] = [...touches.values()]; return { cx: (a[0] + b[0]) / 2, cy: (a[1] + b[1]) / 2, d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1 } }
-  function endTip() {
+  const modeFor = () => { const t = engine.effectiveTool; return t === 'laser' ? 'laser' : engine.holdPan ? 'pan' : t === 'eraser' ? 'erase' : t === 'select' ? 'select' : t === 'shape' ? 'shape' : 'draw' }
+  function leave(cancel) { // finish whatever the tip was doing
     if (mode === 'draw') engine.endStroke(); else if (mode === 'erase') engine.endErase()
+    else if (mode === 'select') engine.selectUp(lx, ly)
+    else if (mode === 'shape') { if (cancel) engine.cancelShape(); else engine.endShape() }
+  }
+  function enter(next, x, y, e) {
+    mode = next
+    if (next === 'erase') { engine.beginErase(); engine.eraseTo(x, y) }
+    else if (next === 'draw') engine.beginStroke(x, y, pressure(e))
+    else if (next === 'pan') last = [x, y]
+    else if (next === 'select') engine.selectDown(x, y, e.shiftKey || e.ctrlKey) // shift/ctrl adds to the selection (desktop)
+    else if (next === 'shape') engine.beginShape(x, y)
+  }
+  function endTip() {
+    leave(false)
     tipId = null; mode = null
     if (barrelOn && getBarrelAction() === 'erase') beginHoldErase() // tip lifted but the button is still held: keep erasing
   }
 
   function syncTipMode(e) {
-    const next = engine.effectiveTool === 'laser' ? 'laser' : engine.holdPan ? 'pan' : engine.effectiveTool === 'eraser' ? 'erase' : 'draw'
+    const next = modeFor()
     if (next === mode) return
     const [x, y] = pos(e)
-    if (mode === 'draw') engine.endStroke()
-    else if (mode === 'erase') engine.endErase()
-    mode = next
-    if (next === 'erase') { engine.beginErase(); engine.eraseTo(x, y) }
-    else if (next === 'draw') engine.beginStroke(x, y, pressure(e))
-    else if (next === 'pan') last = [x, y]
+    leave(true); enter(next, x, y, e) // e.g. the pen button flipped the tool to eraser mid-drag
   }
 
   function startTip(e) {
     endHoldErase() // the touching drag becomes its own erase action
     tipId = e.pointerId; det.resetCount()
     try { canvas.setPointerCapture(e.pointerId) } catch { /* pointer no longer active */ }
-    const [x, y] = pos(e), t = engine.effectiveTool
-    if (t === 'laser') mode = 'laser'
-    else if (engine.holdPan) { mode = 'pan'; last = [x, y] }
-    else if (t === 'eraser') { mode = 'erase'; engine.beginErase(); engine.eraseTo(x, y) }
-    else { mode = 'draw'; engine.beginStroke(x, y, pressure(e)) }
+    if (engine.editing) engine.endEdit() // touching the board finishes text editing
+    const [x, y] = pos(e); lx = x; ly = y
+    enter(modeFor(), x, y, e)
   }
   const onDown = (e) => {
     e.preventDefault()
     if (e.pointerType === 'touch') { // palm rejection: fingers never draw
-      touches.set(e.pointerId, pos(e))
+      if (engine.editing) engine.endEdit()
+      const [tx, ty] = pos(e); touches.set(e.pointerId, [tx, ty])
+      touchTap = touches.size === 1 ? { id: e.pointerId, x: tx, y: ty, t: performance.now(), moved: false } : null
       if (touches.size === 2) { if (mode === 'draw') engine.cancelStroke(); gest = gestureState() }
       return
     }
@@ -74,6 +83,7 @@ export function attachPointer(canvas, engine, getBarrelAction) {
     if (e.pointerType === 'touch') {
       if (!touches.has(e.pointerId)) return
       touches.set(e.pointerId, pos(e))
+      if (touchTap) { const [tx, ty] = pos(e); if (touches.size > 1 || Math.hypot(tx - touchTap.x, ty - touchTap.y) > 8) touchTap = null } // moved: it is a pan, not a tap
       if (touches.size === 2 && gest) { const g = gestureState(); engine.panBy(g.cx - gest.cx, g.cy - gest.cy); engine.zoomAt(g.d / gest.d, g.cx, g.cy); gest = g }
       return
     }
@@ -93,14 +103,21 @@ export function attachPointer(canvas, engine, getBarrelAction) {
     if (started || e.pointerId !== tipId || e.buttons === 0) return // hover only (or the tip just started on this event)
     const list = e.getCoalescedEvents?.().length ? e.getCoalescedEvents() : [e]
     for (const ev of list) {
-      const [px, py] = pos(ev)
+      const [px, py] = pos(ev); lx = px; ly = py
       if (mode === 'draw') engine.extendStroke(px, py, pressure(ev))
       else if (mode === 'erase') engine.eraseTo(px, py)
       else if (mode === 'pan') { engine.panBy(px - last[0], py - last[1]); last = [px, py] }
+      else if (mode === 'select') engine.selectMove(px, py)
+      else if (mode === 'shape') engine.shapeTo(px, py)
     }
   }
   const onUp = (e) => {
-    if (e.pointerType === 'touch') { touches.delete(e.pointerId); if (touches.size < 2) gest = null; return }
+    if (e.pointerType === 'touch') {
+      const tt = touchTap; touchTap = null; touches.delete(e.pointerId); if (touches.size < 2) gest = null
+      // a quick finger tap selects (Select tool): fingers never draw, but they can pick things up
+      if (tt && tt.id === e.pointerId && e.type !== 'pointercancel' && performance.now() - tt.t < 350 && engine.tool === 'select') engine.tapAt(tt.x, tt.y)
+      return
+    }
     // pointerup also fires for the barrel button; keep the tip interaction alive
     // while its primary button is still held.
     if (e.pointerId === tipId && (e.type === 'pointercancel' || !(e.buttons & 1))) endTip()

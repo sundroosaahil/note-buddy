@@ -3,9 +3,12 @@ import { eraseAt, touches } from './eraser.js'
 import * as H from './history.js'
 import { newId } from './ids.js'
 import { drawBackground, isDark, lum } from './background.js'
+import { drawObject } from './objects.js'
+import { selectionMethods } from './selection.js'
+import { objectMethods } from './objectOps.js'
 
 export const PALETTE = ['#0f172a', '#f8fafc', '#dc2626', '#2563eb', '#16a34a', '#d97706', '#9333ea']
-export const createPage = () => ({ id: newId(), strokes: [], undo: [], redo: [], scale: 1, ox: 0, oy: 0, rev: 0, bg: { type: 'white', color: '#ffffff' } })
+export const createPage = () => ({ id: newId(), strokes: [], objects: [], undo: [], redo: [], scale: 1, ox: 0, oy: 0, rev: 0, bg: { type: 'white', color: '#ffffff' } })
 
 function buildPath(s) {
   const o = getStroke(s.pts.map((p) => [p.x, p.y, p.p]), {
@@ -34,6 +37,11 @@ export class Engine {
     this.live = null; this.cursor = null; this.trail = []
     this.dirty = true; this.raf = 0; this.dpr = 1
     this.paths = new WeakMap()
+    // object layer (Stage 6)
+    this.sel = new Set(); this.tf = null; this.lasso = null; this.selDown = null; this.lastTap = null
+    this.editing = null; this.editBefore = null; this.shapeDraft = null; this.snapped = null; this.clip = null
+    this.shapeKind = 'rect'; this.shapeFill = null; this.shapeFillOpacity = 0.35; this.snap = false
+    this.images = new Map(); this.mctx = document.createElement('canvas').getContext('2d')
   }
   get page() { return this.pages[this.index] }
   get activeEraserMode() { return this.override === 'eraser' ? 'precise' : this.eraserMode } // barrel-button erase is always precise
@@ -56,14 +64,15 @@ export class Engine {
     if (this.dirty) {
       cctx.setTransform(1, 0, 0, 1, 0, 0); cctx.clearRect(0, 0, cache.width, cache.height)
       this.world(cctx)
-      this.drawStrokes(cctx, this.page.strokes); this.dirty = false
+      this.drawContent(cctx, this.page); this.dirty = false
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height)
     { const p = this.page, x0 = -p.ox / p.scale, y0 = -p.oy / p.scale
       this.world(ctx); drawBackground(ctx, p.bg, { x0, y0, x1: x0 + this.w / p.scale, y1: y0 + this.h / p.scale }, p.scale)
       ctx.setTransform(1, 0, 0, 1, 0, 0) }
     ctx.drawImage(cache, 0, 0)
-    if (this.live) { this.world(ctx); this.fill(ctx, this.live, buildPath(this.live)); ctx.globalAlpha = 1 }
+    if (this.snapped) { this.world(ctx); drawObject(ctx, this.snapped, { images: this.images }) } // the clean shape replaces the wobbly stroke while the pen holds still
+    else if (this.live) { this.world(ctx); this.fill(ctx, this.live, buildPath(this.live)); ctx.globalAlpha = 1 }
     const now = performance.now(); this.trail = this.trail.filter((p) => now - p.t < 900)
     if (this.trail.length) { // laser pointer: fading trail, redrawn each frame until it has faded
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); ctx.lineCap = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#ef4444'
@@ -78,6 +87,7 @@ export class Engine {
       ctx.beginPath(); ctx.arc(this.cursor.x, this.cursor.y, this.eraserRadius, 0, Math.PI * 2)
       ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.setLineDash(this.activeEraserMode === 'stroke' ? [6, 4] : []); ctx.stroke(); ctx.setLineDash([])
     }
+    this.drawOverlay(ctx) // shape being dragged, lasso, selection box + handles
   }
   invalidate() { this.page.rev++; this.dirty = true; this.schedule() } // rev lets thumbnails know when to refresh
 
@@ -85,13 +95,17 @@ export class Engine {
   snapshot() {
     return { ping: this.ping, index: this.index, count: this.pages.length, bg: this.page.bg, pages: this.pages.map((p) => ({ id: p.id, thumb: this.thumbOf(p) })), tool: this.effectiveTool, baseTool: this.tool, zoom: Math.round(this.page.scale * 100),
       canUndo: this.page.undo.length > 0, canRedo: this.page.redo.length > 0,
-      color: this.color, width: this.width, opacity: this.opacity, drawTool: this.lastDraw, eraserRadius: this.eraserRadius, eraserMode: this.eraserMode, holdPan: this.holdPan }
+      color: this.color, width: this.width, opacity: this.opacity, drawTool: this.lastDraw, eraserRadius: this.eraserRadius, eraserMode: this.eraserMode, holdPan: this.holdPan,
+      sel: this.sel.size ? this.selInfo() : null, editing: this.editing ? this.editInfo() : null, shapeKind: this.shapeKind, shapeFill: this.shapeFill, shapeFillOpacity: this.shapeFillOpacity, snap: this.snap, hasClip: !!this.clip }
   }
   emit() { this.onChange(this.snapshot()); this.save?.schedule() }
   emitSoon() { clearTimeout(this.t); this.t = setTimeout(() => this.emit(), 80) }
   toWorld(x, y) { const p = this.page; return [(x - p.ox) / p.scale, (y - p.oy) / p.scale] }
 
-  setTool(t) { this.ping = (this.ping || 0) + 1; this.tool = t; if (t === 'pen' || t === 'highlighter') this.lastDraw = t; this.emit() }
+  setTool(t) {
+    if (this.editing) this.endEdit()
+    if (t !== 'select') { this.sel = new Set(); this.tf = this.lasso = this.selDown = null } // the selection only exists while the Select tool is active
+    this.ping = (this.ping || 0) + 1; this.tool = t; if (t === 'pen' || t === 'highlighter') this.lastDraw = t; this.emit() }
   toggleEraser() { this.setTool(this.tool === 'eraser' ? this.lastDraw : 'eraser') }
   setColor(c) { this.color = c; if (this.tool === 'eraser') this.setTool(this.lastDraw); else this.emit() }
   cycleColor() { this.setColor(PALETTE[(PALETTE.indexOf(this.color) + 1) % PALETTE.length]) }
@@ -103,12 +117,18 @@ export class Engine {
     if (st.drawTool === 'pen' || st.drawTool === 'highlighter') { this.lastDraw = st.drawTool; this.tool = st.drawTool }
     if (st.eraserRadius >= 6 && st.eraserRadius <= 80) this.eraserRadius = st.eraserRadius
     if (st.eraserMode === 'precise' || st.eraserMode === 'stroke') this.eraserMode = st.eraserMode
+    if (typeof st.snap === 'boolean') this.snap = st.snap
+    if (['line', 'arrow', 'rect', 'round', 'ellipse', 'triangle', 'diamond', 'star'].includes(st.shapeKind)) this.shapeKind = st.shapeKind
+    if (st.shapeFill === null || (typeof st.shapeFill === 'string' && /^#[0-9a-f]{6}$/i.test(st.shapeFill))) this.shapeFill = st.shapeFill
+    if (st.shapeFillOpacity >= 0.05 && st.shapeFillOpacity <= 1) this.shapeFillOpacity = st.shapeFillOpacity
   }
   setEraserMode(m) { this.eraserMode = m; this.schedule(); this.emit() }
   clearPage() { // undoable, so no confirm dialog needed
-    const pg = this.page; if (!pg.strokes.length) return
+    const pg = this.page; if (!pg.strokes.length && !pg.objects.length) return
     if (this.eraseList) this.endErase()
-    this.live = null; H.push(pg, { type: 'clear', old: pg.strokes }); pg.strokes = []
+    this.endEdit(); this.live = null; this.snapped = null
+    const before = this.docSnap(); pg.strokes = []; pg.objects = []; this.sel = new Set()
+    H.push(pg, { type: 'doc', before, after: { strokes: [], objects: [] } })
     this.invalidate(); this.emit(); this.save?.flush()
   }
   setOpacity(o) { this.opacity = o; this.emit() }
@@ -118,19 +138,33 @@ export class Engine {
   hideCursor() { this.cursor = null; this.schedule() }
 
   beginStroke(x, y, p) {
+    this.snapped = null; this.snapAnchor = null; clearTimeout(this.snapT)
     const [wx, wy] = this.toWorld(x, y), hl = this.tool === 'highlighter'
     // width stored in world units, divided by scale so the pen looks the same on screen at any zoom when drawn
     this.live = { id: newId(), kind: hl ? 'hl' : 'ink', color: this.color,
       width: (hl ? this.width * 3 : this.width) / this.page.scale, opacity: hl ? 0.35 : this.opacity, pts: [{ x: wx, y: wy, p }] }
     this.schedule()
   }
-  extendStroke(x, y, p) { if (!this.live) return; const [wx, wy] = this.toWorld(x, y); this.live.pts.push({ x: wx, y: wy, p }); this.schedule() }
-  endStroke() {
-    const s = this.live; this.live = null
-    if (!s) return
-    this.page.strokes.push(s); H.push(this.page, { type: 'add', s }); this.invalidate(); this.emit()
+  extendStroke(x, y, p) {
+    if (!this.live || this.snapped) return // once snapped, the shape is fixed until the pen lifts
+    const [wx, wy] = this.toWorld(x, y); this.live.pts.push({ x: wx, y: wy, p })
+    if (this.snap && this.live.kind === 'ink') { // (re)start the 600 ms hold timer whenever the pen really moves (more than 3 px; jitter is ignored)
+      const a = this.snapAnchor
+      if (!a || Math.hypot(x - a[0], y - a[1]) > 3) { this.snapAnchor = [x, y]; clearTimeout(this.snapT); this.snapT = setTimeout(() => this.trySnap(), 600) }
+    }
+    this.schedule()
   }
-  cancelStroke() { this.live = null; this.schedule() }
+  endStroke() {
+    clearTimeout(this.snapT)
+    const s = this.live, sn = this.snapped; this.live = null; this.snapped = null
+    if (!s) return
+    this.page.strokes.push(s); H.push(this.page, { type: 'add', s })
+    if (sn) { // two history steps: undo first returns the original stroke, undo again removes it
+      this.page.strokes = this.page.strokes.filter((x) => x.id !== s.id); this.page.objects = [...this.page.objects, sn]; H.push(this.page, { type: 'snap', s, o: sn })
+    }
+    this.invalidate(); this.emit()
+  }
+  cancelStroke() { clearTimeout(this.snapT); this.live = null; this.snapped = null; this.schedule() }
 
   // eraser: one drag = one undoable action
   beginErase() { this.eraseList = []; this.owner = new Map(); this.lastE = null; this.eraseMode = this.activeEraserMode }
@@ -164,13 +198,21 @@ export class Engine {
     this.eraseList = null
   }
 
-  drawStrokes(c, strokes) {
-    for (const pass of ['hl', 'ink']) // highlighter pass first so ink stays readable on top
+  drawStrokes(c, strokes, only) {
+    for (const pass of only ? [only] : ['hl', 'ink']) // highlighter pass first so ink stays readable on top
       for (const s of strokes) if ((s.kind === 'hl') === (pass === 'hl')) {
         let p = this.paths.get(s); if (!p) this.paths.set(s, (p = buildPath(s)))
         this.fill(c, s, p)
       }
     c.globalAlpha = 1
+  }
+  // layer order: highlighter, then objects (shapes, notes, text, stickers, images in their own z-order), then ink on top,
+  // so writing stays readable over everything and you can write on a sticky note
+  drawContent(c, page) {
+    this.drawStrokes(c, page.strokes, 'hl')
+    const env = { images: this.images, hideText: this.editing }
+    for (const o of page.objects) drawObject(c, o, env)
+    this.drawStrokes(c, page.strokes, 'ink')
   }
   thumbOf(p) { // what the teacher last saw on this page, cached until the page changes
     if (!this.w) return ''
@@ -180,7 +222,7 @@ export class Engine {
     const x = c.getContext('2d'), x0 = -p.ox / p.scale, y0 = -p.oy / p.scale
     x.setTransform(k * p.scale, 0, 0, k * p.scale, k * p.ox, k * p.oy)
     drawBackground(x, p.bg, { x0, y0, x1: x0 + this.w / p.scale, y1: y0 + this.h / p.scale }, k * p.scale)
-    this.drawStrokes(x, p.strokes)
+    this.drawContent(x, p)
     p._tr = p.rev; return (p._t = c.toDataURL())
   }
   adaptInk() { // keep ink visible: near-black ink on dark boards flips to white, near-white ink on light boards to dark
@@ -188,14 +230,18 @@ export class Engine {
     if (dark && l < 0.35) this.color = '#f8fafc'; else if (!dark && l > 0.75) this.color = '#0f172a'
   }
   setBackground(bg) { this.page.bg = bg; this.adaptInk(); this.invalidate(); this.emit() }
-  leavePage() { if (this.eraseList) this.endErase(); this.live = null }
+  leavePage() {
+    if (this.eraseList) this.endErase()
+    this.endEdit(); clearTimeout(this.snapT)
+    this.live = null; this.snapped = null; this.shapeDraft = null; this.sel = new Set(); this.tf = this.lasso = this.selDown = null
+  }
   goPage(i) {
     if (i < 0 || i >= this.pages.length || i === this.index) return
     this.leavePage(); this.index = i; this.adaptInk(); this.dirty = true; this.schedule(); this.emit(); this.save?.flush()
   }
   addPage() { const pg = createPage(); pg.bg = { ...this.page.bg }; this.pages.splice(this.index + 1, 0, pg); this.goPage(this.index + 1) }
   duplicatePage() {
-    const o = this.page, pg = { ...createPage(), scale: o.scale, ox: o.ox, oy: o.oy, bg: { ...o.bg }, strokes: o.strokes.map((s) => ({ ...s, id: newId() })) }
+    const o = this.page, pg = { ...createPage(), scale: o.scale, ox: o.ox, oy: o.oy, bg: { ...o.bg }, strokes: o.strokes.map((s) => ({ ...s, id: newId() })), objects: o.objects.map((x) => ({ ...x, id: newId() })) }
     this.pages.splice(this.index + 1, 0, pg); this.goPage(this.index + 1)
   }
   nextPage() { this.index === this.pages.length - 1 ? this.addPage() : this.goPage(this.index + 1) }
@@ -211,10 +257,11 @@ export class Engine {
     const list = order.map((id) => byId.get(id)).filter(Boolean).map((r) => ({ ...createPage(), ...r, undo: [], redo: [], rev: 0, _sv: 0 }))
     if (!list.length) return
     this.pages = list; this.index = Math.min(index ?? 0, list.length - 1); this.dirty = true; this.schedule(); this.emit()
+    this.loadImages() // decode inserted images from storage in the background
   }
   newBoard() { this.leavePage(); this.pages = [createPage()]; this.index = 0; this.dirty = true; this.schedule(); this.emit(); this.save?.flush() }
-  undo() { if (H.undo(this.page)) { this.invalidate(); this.emit(); this.save?.flush() } }
-  redo() { if (H.redo(this.page)) { this.invalidate(); this.emit(); this.save?.flush() } }
+  undo() { this.endEdit(); if (H.undo(this.page)) { this.pruneSel(); this.invalidate(); this.emit(); this.save?.flush() } }
+  redo() { this.endEdit(); if (H.redo(this.page)) { this.pruneSel(); this.invalidate(); this.emit(); this.save?.flush() } }
   panBy(dx, dy) { this.page.ox += dx; this.page.oy += dy; this.invalidate() }
   zoomAt(f, cx, cy) {
     const p = this.page, ns = Math.max(0.2, Math.min(8, p.scale * f)), k = ns / p.scale
@@ -222,5 +269,6 @@ export class Engine {
     this.invalidate(); this.emitSoon()
   }
   zoomBy(f) { this.zoomAt(f, this.w / 2, this.h / 2) }
-  destroy() { cancelAnimationFrame(this.raf); clearTimeout(this.t) }
+  destroy() { cancelAnimationFrame(this.raf); clearTimeout(this.t); clearTimeout(this.snapT) }
 }
+Object.assign(Engine.prototype, selectionMethods, objectMethods) // selection/transform + object operations live in their own files

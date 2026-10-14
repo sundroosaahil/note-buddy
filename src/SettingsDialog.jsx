@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Settings, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { btn } from './ui.jsx'
 import { ACTIONS } from './input/actions.js'
 import { comboOf } from './input/keymap.js'
@@ -87,10 +87,9 @@ function Diag() { // listens on window because the dialog overlay covers the can
   )
 }
 
-export function SettingsButton() {
+export function SettingsDialog({ open, onOpenChange }) {
   return (
-    <Dialog.Root>
-      <Dialog.Trigger asChild><button aria-label="Settings" title="Settings" className={btn(false)}><Settings size={20} /></button></Dialog.Trigger>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[min(34rem,94vw)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-4 text-slate-800 shadow-xl dark:bg-slate-800 dark:text-slate-100">

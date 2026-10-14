@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
-import { Download, FileDown, Image, FileX } from 'lucide-react'
+import { Download, FileDown, Image, FileX, Maximize } from 'lucide-react'
 import { btn, panel } from './ui.jsx'
 import Confirm from './Confirm.jsx'
-import { exportPDF, exportPNG } from './export/pdf.js'
+import { exportPDF, exportPNG, exportViewportPNG } from './export/pdf.js'
 
 export function ExportMenu({ eng }) {
   const [msg, setMsg] = useState('')
@@ -15,7 +15,8 @@ export function ExportMenu({ eng }) {
       <Popover.Portal>
         <Popover.Content side="right" sideOffset={10} collisionPadding={8} onOpenAutoFocus={(e) => e.preventDefault()} className={`${panel} z-50 flex w-56 flex-col p-2`}>
           <button className={row} onClick={() => run(exportPDF)}><FileDown size={18} />Save all pages as PDF</button>
-          <button className={row} onClick={() => run(exportPNG)}><Image size={18} />Save this page as PNG</button>
+          <button className={row} onClick={() => run(exportPNG)}><Image size={18} />Save cropped content as PNG</button>
+          <button className={row} onClick={() => run(exportViewportPNG)}><Maximize size={18} />Save full board view as PNG</button>
           {msg && <p className="px-3 pt-1 text-xs text-slate-500 dark:text-slate-300">{msg}</p>}
         </Popover.Content>
       </Popover.Portal>

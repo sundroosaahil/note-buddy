@@ -26,3 +26,18 @@ export function renderPage(engine, page) {
   engine.drawContent(ctx, page) // ink and objects, same layer order as the screen
   return c
 }
+
+// Render exactly the board viewport, preserving its current pan, zoom and phone/tablet aspect ratio.
+export function renderViewport(engine, page = engine.page) {
+  const vw = engine.w, vh = engine.h
+  if (!vw || !vh) return null
+  const k = Math.min(3, 1800 / Math.max(vw, vh)), w = Math.round(vw * k), h = Math.round(vh * k)
+  const x0 = -page.ox / page.scale, y0 = -page.oy / page.scale
+  const bounds = { x0, y0, x1: x0 + vw / page.scale, y1: y0 + vh / page.scale }
+  const c = document.createElement('canvas'); c.width = w; c.height = h
+  const ctx = c.getContext('2d'), scale = k * page.scale
+  ctx.setTransform(scale, 0, 0, scale, k * page.ox, k * page.oy)
+  drawBackground(ctx, page.bg, bounds, scale)
+  engine.drawContent(ctx, page)
+  return c
+}

@@ -1,4 +1,4 @@
-import { renderPage } from './render.js'
+import { renderPage, renderViewport } from './render.js'
 
 const stamp = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}` }
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
@@ -34,4 +34,12 @@ export async function exportPNG(engine) {
   const blob = await new Promise((r) => c.toBlob(r, 'image/png'))
   const name = `class-${stamp()}-page${engine.index + 1}.png`
   await saveFile(blob, name); return `Saved ${name}`
+}
+
+export async function exportViewportPNG(engine) {
+  await engine.ensureImages()
+  const c = renderViewport(engine); if (!c) return 'The board is not ready yet'
+  const blob = await new Promise((r) => c.toBlob(r, 'image/png'))
+  const name = `class-${stamp()}-page${engine.index + 1}-screen.png`
+  await saveFile(blob, name); return `Saved full board view as ${name}`
 }

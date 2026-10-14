@@ -44,8 +44,8 @@
 .new-notebook-button:disabled { opacity: .65; cursor: wait; }
 .new-book-icon { width: 50px; height: 50px; display: grid; place-items: center; border: 2px solid #202124; border-radius: 13px 11px 14px 10px; color: #202124; background: linear-gradient(135deg,#fff 0 39%,#ffeb3b 39% 58%,#ff9800 58% 75%,#f44336 75%); }
 .new-book-label { display: flex; flex: 1; flex-direction: column; gap: 3px; }
-.new-book-label small { order: 2; color: var(--muted); font-size: 11px; }
-.new-book-label strong { order: 1; color: var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 600; }
+.new-book-label small { order: 2; color: #5f6368; font-size: 11px; }
+.new-book-label strong { order: 1; color: #202124; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 600; }
 .new-book-arrow { color: #202124; transition: transform .2s ease; }
 .new-notebook-button:hover .new-book-arrow { transform: translateX(3px); }
 .hero-footnote { display: flex; align-items: center; gap: 7px; margin: 14px 0 0 2px; color: var(--muted); font-size: 11px; }

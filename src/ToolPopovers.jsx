@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
-import { Minus, ArrowUpRight, Square, SquareRoundCorner, Circle, Triangle, Diamond, Star, StickyNote, Type, ImagePlus } from 'lucide-react'
+import { Minus, ArrowUpRight, Square, SquareRoundCorner, Circle, Triangle, Diamond, Star, Type, ImagePlus } from 'lucide-react'
 import { btn, panel, Btn } from './ui.jsx'
 import { Slide, Swatches } from './controls.jsx'
 import { PALETTE } from './engine/Engine.js'
@@ -9,6 +9,13 @@ import { STICKER_SETS } from './engine/stickers.js'
 
 const SHAPE_ICONS = { line: Minus, arrow: ArrowUpRight, rect: Square, round: SquareRoundCorner, ellipse: Circle, triangle: Triangle, diamond: Diamond, star: Star }
 const SHAPE_NAMES = { line: 'Line', arrow: 'Arrow', rect: 'Rectangle', round: 'Rounded rectangle', ellipse: 'Ellipse', triangle: 'Triangle', diamond: 'Diamond', star: 'Star' }
+
+function StickyTextIcon() {
+  return <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 3.75h10l4 4v12.5H5z" /><path d="M15 3.75v4h4" /><path d="M8.5 15.7v-4.4h2.1a1.35 1.35 0 0 1 0 2.7H8.5m5.1-2.7v4.4m0-2.2h2.7m0-2.2v4.4" />
+    <circle cx="19" cy="5" r="3.5" fill="white" /><path d="M19 3.6v2.8m-1.4-1.4h2.8" />
+  </svg>
+}
 
 export function ShapesPopover({ s, eng }) {
   const active = s.baseTool === 'shape', Icon = SHAPE_ICONS[s.shapeKind] || Square
@@ -40,7 +47,7 @@ export function NotesPopover({ s, eng }) {
     <>
       <input ref={file} type="file" accept="image/*" hidden aria-label="Choose an image" onChange={(e) => { const f = e.target.files?.[0]; if (f) eng().addImage(f); e.target.value = ''; setOpen(false) }} />
       <Popover.Root open={open} onOpenChange={setOpen}>
-        <Popover.Trigger asChild><button aria-label="Notes and stickers" title="Notes, text, stickers and images" className={btn(false)}><StickyNote size={20} /></button></Popover.Trigger>
+        <Popover.Trigger asChild><button aria-label="Notes and stickers" title="Notes, text, stickers and images" className={btn(false)}><StickyTextIcon /></button></Popover.Trigger>
         <Popover.Portal>
           <Popover.Content side="right" sideOffset={10} collisionPadding={8} onOpenAutoFocus={(e) => e.preventDefault()} className={`${panel} z-50 flex max-h-[90vh] w-72 flex-col gap-3 overflow-y-auto p-3`}>
             <div className="text-xs text-slate-600 dark:text-slate-300">Sticky note</div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
-import { Pen, Highlighter, Eraser, Undo2, Redo2, ZoomIn, ZoomOut, Minus, Plus, Sun, Moon, EyeOff, Crosshair, Maximize, Minimize, MousePointer2, WandSparkles, Ellipsis, Settings, House } from 'lucide-react'
+import { Pen, Highlighter, Eraser, Undo2, Redo2, ZoomIn, ZoomOut, Minus, Plus, Sun, Moon, EyeOff, Crosshair, Maximize, Minimize, MousePointer2, WandSparkles, Ellipsis, Settings, House, Smartphone } from 'lucide-react'
 import { Engine, PALETTE } from './engine/Engine.js'
 import { attachPointer } from './input/pointer.js'
 import { attachKeys } from './input/keys.js'
@@ -59,6 +59,15 @@ export default function App() {
   const [more, setMore] = useState(false), [settingsOpen, setSettingsOpen] = useState(false)
   const compact = useCompact()
   const [drawing, setDrawing] = useState(false) // a finger/pen is down on the board: phones fade the bars so they never hide the writing
+  const [starting, setStarting] = useState(true)
+  const [portraitBoard, setPortraitBoard] = useState(false)
+
+  useEffect(() => { const timer = setTimeout(() => setStarting(false), 850); return () => clearTimeout(timer) }, [])
+  useEffect(() => {
+    const update = () => setPortraitBoard(Boolean(activeNotebookId) && window.matchMedia('(max-width: 640px)').matches && window.innerHeight > window.innerWidth)
+    update(); window.addEventListener('resize', update); window.addEventListener('orientationchange', update)
+    return () => { window.removeEventListener('resize', update); window.removeEventListener('orientationchange', update) }
+  }, [activeNotebookId])
 
   useEffect(() => {
     if (!activeNotebookId) { setS(null); return }
@@ -130,11 +139,18 @@ export default function App() {
   const snapBtn = s && <Btn label="Shape snapping: hold the pen still at the end of a stroke to straighten it" active={s.snap} onClick={() => eng().setSnap(!s.snap)}><WandSparkles size={20} /></Btn>
   const laserBtn = s && <Btn label="Laser pointer" active={s.baseTool === 'laser'} onClick={() => eng().setTool(s.baseTool === 'laser' ? s.drawTool : 'laser')}><Crosshair size={20} /></Btn>
   const fade = compact && drawing ? 'opacity-25' : ''
-  const openNotebook = (id) => setActiveNotebookId(id)
+  const openNotebook = async (id) => {
+    if (window.matchMedia('(max-width: 640px)').matches) {
+      try { await screen.orientation?.lock?.('landscape') } catch { /* Unsupported in some mobile browsers; the board shows a rotate prompt. */ }
+    }
+    setActiveNotebookId(id)
+  }
   const goHome = async () => { await engineRef.current?.save?.flush(); setActiveNotebookId(null) }
+  if (starting) return <div className="app-splash" role="status" aria-label="Loading Notes Buddy"><div className="splash-book"><span /><span /><span /><span /><span /><span /></div><strong>Notes Buddy</strong></div>
   if (!activeNotebookId) return <HomePage onOpen={openNotebook} />
   return (
     <div className="fixed inset-0 bg-white">
+      {portraitBoard && <div className="rotate-prompt"><div className="rotate-card"><Smartphone size={38} strokeWidth={1.7} /><strong>Turn your phone sideways</strong><span>The notebook works best in landscape.</span></div></div>}
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full touch-none" />
       {s && !presenter && (
         <>

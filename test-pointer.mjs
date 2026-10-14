@@ -56,3 +56,24 @@ const trace = (L, b, p, from = 6, to = 12) => { for (let x = from; x < to; x++) 
   assert.equal(engine.override, null); balanced(calls)
 }
 console.log('pointer + barrel simulation ok')
+
+// Optional finger drawing stays off by default and a second touch cancels a stroke for gestures.
+{
+  const mkF = (on) => {
+    const L = {}, canvas = { addEventListener: (n, f) => (L[n] = f), removeEventListener() {}, getBoundingClientRect: () => ({ left: 0, top: 0 }), setPointerCapture() {} }
+    const calls = []
+    const engine = { override: null, holdPan: false, tool: 'pen', get effectiveTool() { return this.override || 'pen' }, emit() {}, setCursor() {}, hideCursor() {}, editing: false,
+      beginStroke: () => calls.push('beginStroke'), extendStroke: () => calls.push('extend'), endStroke: () => calls.push('endStroke'), cancelStroke: () => calls.push('cancelStroke'),
+      panBy: () => calls.push('pan'), zoomAt: () => calls.push('zoom') }
+    attachPointer(canvas, engine, () => 'erase', () => on); return { L, calls }
+  }
+  const f = (type, id, x, b = 1) => ({ type, pointerType: 'touch', pointerId: id, buttons: b, button: 0, pressure: 0.5, clientX: x, clientY: 5, preventDefault() {}, getCoalescedEvents: () => [] })
+  let t = mkF(false); t.L.pointerdown(f('pointerdown', 1, 5)); t.L.pointermove(f('pointermove', 1, 9)); t.L.pointerup(f('pointerup', 1, 9, 0))
+  assert.deepEqual(t.calls, [], 'touch must not draw while finger drawing is off')
+  t = mkF(true); t.L.pointerdown(f('pointerdown', 1, 5)); t.L.pointermove(f('pointermove', 1, 9)); t.L.pointerup(f('pointerup', 1, 9, 0))
+  assert.deepEqual(t.calls, ['beginStroke', 'extend', 'endStroke'], 'one finger draws when finger drawing is on')
+  t = mkF(true); t.L.pointerdown(f('pointerdown', 1, 5)); t.L.pointermove(f('pointermove', 1, 8)); t.L.pointerdown(f('pointerdown', 2, 40)); t.L.pointermove(f('pointermove', 2, 60)); t.L.pointermove(f('pointermove', 1, 20))
+  assert.ok(t.calls.includes('cancelStroke') && !t.calls.includes('endStroke'), 'second finger cancels the stroke'); assert.ok(t.calls.includes('pan') || t.calls.includes('zoom'), 'two fingers continue to pan or zoom')
+  const before = t.calls.filter((c) => c === 'extend').length; t.L.pointermove(f('pointermove', 1, 25)); assert.equal(t.calls.filter((c) => c === 'extend').length, before, 'no ink after a two-finger gesture starts')
+}
+console.log('finger draw ok')

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
-import { Pen, Highlighter, Eraser, Undo2, Redo2, ZoomIn, ZoomOut, Minus, Plus, Sun, Moon, EyeOff, Crosshair, Maximize, Minimize, MousePointer2, WandSparkles, Ellipsis, Settings, House, Smartphone } from 'lucide-react'
+import { Pen, Highlighter, Eraser, Undo2, Redo2, ZoomIn, ZoomOut, Minus, Plus, Sun, Moon, EyeOff, Crosshair, Maximize, Minimize, MousePointer2, WandSparkles, Ellipsis, Settings, House, Smartphone, Hand } from 'lucide-react'
 import { Engine, PALETTE } from './engine/Engine.js'
 import { attachPointer } from './input/pointer.js'
 import { attachKeys } from './input/keys.js'
 import { runAction } from './input/actions.js'
-import { settings, saveSoon } from './store/settings.js'
+import { settings, saveSoon, saveSettings } from './store/settings.js'
 import { SettingsDialog } from './SettingsDialog.jsx'
 import { Slide } from './controls.jsx'
 import { ShapesPopover, NotesPopover } from './ToolPopovers.jsx'
@@ -59,6 +59,8 @@ export default function App() {
   const [more, setMore] = useState(false), [settingsOpen, setSettingsOpen] = useState(false)
   const compact = useCompact()
   const [drawing, setDrawing] = useState(false) // a finger/pen is down on the board: phones fade the bars so they never hide the writing
+  const [fingerDraw, setFingerDraw] = useState(settings.fingerDraw)
+  const toggleFingerDraw = () => { settings.fingerDraw = !settings.fingerDraw; saveSettings(); setFingerDraw(settings.fingerDraw) }
   const [starting, setStarting] = useState(true)
   const [portraitBoard, setPortraitBoard] = useState(false)
 
@@ -93,7 +95,7 @@ export default function App() {
         pruneBlobs(new Set(engine.pages.flatMap((p) => p.objects.filter((o) => o.type === 'image').map((o) => o.blobId)))).catch(() => {})
       }
       const ro = new ResizeObserver(() => engine.resize()); ro.observe(canvas)
-      const offP = attachPointer(canvas, engine, () => settings.barrelAction)
+      const offP = attachPointer(canvas, engine, () => settings.barrelAction, () => settings.fingerDraw)
       const offK = attachKeys(engine, () => settings.keymap, () => settings.capturing)
       const down = new Set(), onDown = (e) => { down.add(e.pointerId); setDrawing(true) }, onUp = (e) => { down.delete(e.pointerId); if (!down.size) setDrawing(false) }
       canvas.addEventListener('pointerdown', onDown); window.addEventListener('pointerup', onUp); window.addEventListener('pointercancel', onUp)
@@ -173,6 +175,7 @@ export default function App() {
               <Popover.Portal>
                 <Popover.Content side="right" sideOffset={10} collisionPadding={8} onOpenAutoFocus={(e) => e.preventDefault()} className={`${panel} z-50 grid grid-cols-4 gap-1 p-2`}>
                   {compact && <><ShapesPopover s={s} eng={eng} /><NotesPopover s={s} eng={eng} />{snapBtn}{laserBtn}<BgPopover s={s} eng={eng} /></>}
+                  <Btn label={fingerDraw ? 'Finger drawing is on (tap to turn off)' : 'Draw with finger (for phones without a pen)'} active={fingerDraw} onClick={toggleFingerDraw}><Hand size={20} /></Btn>
                   <Btn label="Zoom out" onClick={() => act('zoomOut')}><ZoomOut size={20} /></Btn>
                   <Btn label="Zoom in" onClick={() => act('zoomIn')}><ZoomIn size={20} /></Btn>
                   <ExportMenu eng={eng} />

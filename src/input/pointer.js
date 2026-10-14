@@ -1,9 +1,11 @@
 import { runAction } from './actions.js'
 import { createBarrelDetector } from './barrel.js'
 
-export function attachPointer(canvas, engine, getBarrelAction) {
+// Finger drawing is optional: by default touches retain the existing selection and gesture behavior.
+export function attachPointer(canvas, engine, getBarrelAction, getFingerDraw = () => false) {
   const touches = new Map()
   let tipId = null, mode = null, last = null, gest = null, lx = 0, ly = 0, touchTap = null // lx/ly: last tip position, touchTap: a finger that might be a tap
+  let fingerTip = null
   let barrelOn = false, holdErase = false // holdErase: erasing by moving the pen while the barrel button is held (hovering or touching)
   const pos = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top] }
   const pressure = (e) => (e.pointerType === 'pen' ? Math.max(e.pressure, 0.05) : 0.5)
@@ -65,13 +67,32 @@ export function attachPointer(canvas, engine, getBarrelAction) {
     const [x, y] = pos(e); lx = x; ly = y
     enter(modeFor(), x, y, e)
   }
+  function drive(e) {
+    const list = e.getCoalescedEvents?.().length ? e.getCoalescedEvents() : [e]
+    for (const ev of list) {
+      const [px, py] = pos(ev); lx = px; ly = py
+      if (mode === 'draw') engine.extendStroke(px, py, pressure(ev))
+      else if (mode === 'erase') engine.eraseTo(px, py)
+      else if (mode === 'pan') { engine.panBy(px - last[0], py - last[1]); last = [px, py] }
+      else if (mode === 'select') engine.selectMove(px, py)
+      else if (mode === 'shape') engine.shapeTo(px, py)
+    }
+  }
+  function dropFingerTip() {
+    if (fingerTip === null) return
+    if (mode === 'draw') engine.cancelStroke(); else leave(true)
+    tipId = null; mode = null; fingerTip = null
+  }
   const onDown = (e) => {
     e.preventDefault()
     if (e.pointerType === 'touch') { // palm rejection: fingers never draw
       if (engine.editing) engine.endEdit()
       const [tx, ty] = pos(e); touches.set(e.pointerId, [tx, ty])
+      if (getFingerDraw() && touches.size === 1 && tipId === null && !engine.holdPan) {
+        touchTap = null; fingerTip = e.pointerId; startTip(e); return
+      }
       touchTap = touches.size === 1 ? { id: e.pointerId, x: tx, y: ty, t: performance.now(), moved: false } : null
-      if (touches.size === 2) { if (mode === 'draw') engine.cancelStroke(); gest = gestureState() }
+      if (touches.size === 2) { dropFingerTip(); if (mode === 'draw') engine.cancelStroke(); gest = gestureState() }
       return
     }
     // the pen button (button 2: right mouse button in mouse mode, barrel button in pen mode) is never a drawing tip
@@ -83,6 +104,7 @@ export function attachPointer(canvas, engine, getBarrelAction) {
     if (e.pointerType === 'touch') {
       if (!touches.has(e.pointerId)) return
       touches.set(e.pointerId, pos(e))
+      if (e.pointerId === fingerTip) { drive(e); return }
       if (touchTap) { const [tx, ty] = pos(e); if (touches.size > 1 || Math.hypot(tx - touchTap.x, ty - touchTap.y) > 8) touchTap = null } // moved: it is a pan, not a tap
       if (touches.size === 2 && gest) { const g = gestureState(); engine.panBy(g.cx - gest.cx, g.cy - gest.cy); engine.zoomAt(g.d / gest.d, g.cx, g.cy); gest = g }
       return
@@ -101,18 +123,11 @@ export function attachPointer(canvas, engine, getBarrelAction) {
       return
     }
     if (started || e.pointerId !== tipId || e.buttons === 0) return // hover only (or the tip just started on this event)
-    const list = e.getCoalescedEvents?.().length ? e.getCoalescedEvents() : [e]
-    for (const ev of list) {
-      const [px, py] = pos(ev); lx = px; ly = py
-      if (mode === 'draw') engine.extendStroke(px, py, pressure(ev))
-      else if (mode === 'erase') engine.eraseTo(px, py)
-      else if (mode === 'pan') { engine.panBy(px - last[0], py - last[1]); last = [px, py] }
-      else if (mode === 'select') engine.selectMove(px, py)
-      else if (mode === 'shape') engine.shapeTo(px, py)
-    }
+    drive(e)
   }
   const onUp = (e) => {
     if (e.pointerType === 'touch') {
+      if (e.pointerId === fingerTip) { touches.delete(e.pointerId); touchTap = null; if (e.type === 'pointercancel') dropFingerTip(); else { fingerTip = null; endTip() } return }
       const tt = touchTap; touchTap = null; touches.delete(e.pointerId); if (touches.size < 2) gest = null
       // a quick finger tap selects (Select tool): fingers never draw, but they can pick things up
       if (tt && tt.id === e.pointerId && e.type !== 'pointercancel' && performance.now() - tt.t < 350 && engine.tool === 'select') engine.tapAt(tt.x, tt.y)

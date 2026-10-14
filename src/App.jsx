@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
-import { Pen, Highlighter, Eraser, Undo2, Redo2, ZoomIn, ZoomOut, Minus, Plus, Sun, Moon, EyeOff, Crosshair, Maximize, Minimize, MousePointer2, WandSparkles, Ellipsis, Settings } from 'lucide-react'
+import { Pen, Highlighter, Eraser, Undo2, Redo2, ZoomIn, ZoomOut, Minus, Plus, Sun, Moon, EyeOff, Crosshair, Maximize, Minimize, MousePointer2, WandSparkles, Ellipsis, Settings, House } from 'lucide-react'
 import { Engine, PALETTE } from './engine/Engine.js'
 import { attachPointer } from './input/pointer.js'
 import { attachKeys } from './input/keys.js'
@@ -14,8 +14,10 @@ import { TextEditor } from './TextEditor.jsx'
 import { btn, panel, Btn } from './ui.jsx'
 import { PageBar, BgPopover } from './PageBar.jsx'
 import { ExportMenu } from './ExportMenu.jsx'
-import { loadBoard, pruneBlobs } from './store/db.js'
+import { loadBoard as loadLegacyBoard, pruneBlobs } from './store/db.js'
+import { loadBoard as loadNotebookBoard } from './lib/notebooks.js'
 import { createAutosave } from './store/autosave.js'
+import HomePage from './components/HomePage.jsx'
 
 function PenPopover({ s, eng }) {
   const isDraw = s.baseTool === 'pen' || s.baseTool === 'highlighter'
@@ -48,6 +50,7 @@ function PenPopover({ s, eng }) {
 
 export default function App() {
   const canvasRef = useRef(null), engineRef = useRef(null)
+  const [activeNotebookId, setActiveNotebookId] = useState(null)
   const [s, setS] = useState(null)
   const [dark, setDark] = useState(() => localStorage.getItem('ui-dark') === '1')
   const [presenter, setPresenter] = useState(false)
@@ -56,11 +59,12 @@ export default function App() {
   const [more, setMore] = useState(false), [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
+    if (!activeNotebookId) { setS(null); return }
     let dead = false, cleanup = () => {}
     navigator.storage?.persist?.() // ask Chrome not to evict the saved board under storage pressure
     ;(async () => {
       let data = null
-      try { data = await loadBoard() } catch (e) { console.warn('load failed', e) }
+      try { data = await loadNotebookBoard(activeNotebookId) } catch (e) { console.warn('load failed', e) }
       if (dead) return // StrictMode / fast unmount
       const onChange = (snap) => {
         setS(snap)
@@ -71,7 +75,7 @@ export default function App() {
       const canvas = canvasRef.current, engine = new Engine(canvas, onChange)
       engine.applyStyle(settings.style)
       engineRef.current = engine; engine.resize()
-      engine.save = createAutosave(engine)
+      engine.save = createAutosave(engine, activeNotebookId)
       if (data) {
         engine.restore(data)
         // forget stored images no page uses any more (safe now: the undo history is empty at startup)
@@ -84,7 +88,7 @@ export default function App() {
       cleanup = () => { ro.disconnect(); offP(); offK(); engine.save.destroy(); engine.destroy() }
     })()
     return () => { dead = true; cleanup() }
-  }, [])
+  }, [activeNotebookId])
   useEffect(() => { document.documentElement.classList.toggle('dark', dark); localStorage.setItem('ui-dark', dark ? '1' : '0') }, [dark])
 
   // HUD: appears for 3 seconds whenever a tool is chosen or the zoom changes, then fades out
@@ -119,11 +123,16 @@ export default function App() {
   const toggleFs = () => { if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.().catch(() => {}) }
 
   const eng = () => engineRef.current, act = (n) => runAction(eng(), n)
+  const openNotebook = (id) => setActiveNotebookId(id)
+  const goHome = async () => { await engineRef.current?.save?.flush(); setActiveNotebookId(null) }
+  if (!activeNotebookId) return <HomePage onOpen={openNotebook} />
   return (
     <div className="fixed inset-0 bg-white">
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full touch-none" />
       {s && !presenter && (
         <>
+          <button aria-label="All notebooks" title="All notebooks" onClick={goHome}
+            className={`${btn(false)} absolute right-3 top-3 z-20`}><House size={20} /></button>
           <div className={`${panel} absolute left-2 top-1/2 flex max-h-[96%] -translate-y-1/2 flex-col gap-1 overflow-y-auto p-1.5 [@media(max-height:520px)]:grid [@media(max-height:520px)]:grid-cols-2`} /* short phone screens: two columns */>
             <PenPopover s={s} eng={eng} />
             <Btn label="Eraser" active={s.baseTool === 'eraser'} onClick={() => act('toggleEraser')}><Eraser size={20} /></Btn>

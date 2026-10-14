@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), VitePWA({
     registerType: 'autoUpdate',
     manifest: {
-      name: 'Whiteboard', short_name: 'Whiteboard', description: 'Teacher whiteboard for pen tablets',
+      name: 'Notes Buddy', short_name: 'Notes Buddy', description: 'A simple classroom whiteboard for your notes and lessons',
       start_url: '/', scope: '/', theme_color: '#ffffff', background_color: '#ffffff',
       display: 'fullscreen', display_override: ['fullscreen', 'standalone'], orientation: 'any',
       icons: [

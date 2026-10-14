@@ -60,47 +60,22 @@ export default function HomePage({ onOpen }) {
         <header className="home-masthead">
           <div className="home-brand">
             <div className="home-brand-mark"><PenIcon className="h-5 w-5" /></div>
-            <div><h1>Notes Buddy</h1><p>A classroom notebook</p></div>
+            <div><h1>Notes Buddy</h1></div>
           </div>
-          <div className="home-edition"><span className="edition-dot" /> YOUR PERSONAL CLASSROOM</div>
         </header>
 
-        {/* Start new notebook */}
         <section className="home-hero">
-          <div className="hero-copy">
-            <p className="home-eyebrow">A LITTLE SPACE TO THINK</p>
-            <h2>Every good lesson<br />starts <em>somewhere.</em></h2>
-            <p className="hero-description">Gather your notes, sketches, and class ideas in one place. Open a fresh notebook and let the board take shape.</p>
-            <button onClick={start} disabled={migrating} className="new-notebook-button">
-              <span className="new-book-icon"><PlusIcon className="h-5 w-5" /></span>
-              <span className="new-book-label"><small>BEGIN A NEW CLASS</small><strong>Start a notebook</strong></span>
-              <ArrowIcon className="new-book-arrow h-5 w-5" />
-            </button>
-            <p className="hero-footnote"><LockIcon className="h-3.5 w-3.5" /> Saved privately on this device</p>
-          </div>
-          <div className="hero-art" aria-hidden="true">
-            <div className="art-caption">ROOM TO WRITE, ROOM TO WONDER</div>
-            <div className="book-shadow" />
-            <div className="open-book">
-              <div className="book-page page-left"><span className="page-number">01</span><i /><i /><i /><i /><i /><i /></div>
-              <div className="book-page page-right"><span className="page-ribbon" /><span className="page-sun" /><i /><i /><i /><i /><i /><span className="page-number">02</span></div>
-            </div>
-            <div className="art-stamp">LESSON<br />NOTES</div>
-          </div>
+          <button onClick={start} disabled={migrating} className="new-notebook-button">
+            <span className="new-book-icon"><PlusIcon className="h-5 w-5" /></span>
+            <span className="new-book-label"><strong>Start a new notebook</strong><small>Open a blank classroom board</small></span>
+            <ArrowIcon className="new-book-arrow h-5 w-5" />
+          </button>
         </section>
 
-        {/* Previous classes */}
         <section className="bookshelf-section">
           <div className="bookshelf-heading">
-            <div>
-              <p className="home-eyebrow">PICK UP WHERE YOU LEFT OFF</p>
-              <h2>Your bookshelf</h2>
-              <p className="bookshelf-count">
-                {notebooks.length === 0
-                  ? 'A home for the classes you create'
-                  : `${notebooks.length} notebook${notebooks.length === 1 ? '' : 's'} saved`}
-              </p>
-            </div>
+            <h2>Previous classes</h2>
+            <span className="bookshelf-count">{notebooks.length ? `${notebooks.length} notebook${notebooks.length === 1 ? '' : 's'}` : ''}</span>
             {notebooks.length > 4 && (
               <label className="home-search">
                 <SearchIcon className="h-4 w-4" />
@@ -141,7 +116,7 @@ export default function HomePage({ onOpen }) {
         <footer className="home-footer">
           <LockIcon className="h-3.5 w-3.5" />
           <span>
-            Stored only in this browser on this device. Nothing is uploaded.
+            Saved only in this browser on this device.
             {persisted === false && ' Tip: install the app to the home screen so the browser never clears it.'}
           </span>
         </footer>

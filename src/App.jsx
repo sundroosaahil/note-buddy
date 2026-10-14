@@ -146,7 +146,7 @@ export default function App() {
     setActiveNotebookId(id)
   }
   const goHome = async () => { await engineRef.current?.save?.flush(); setActiveNotebookId(null) }
-  if (starting) return <div className="app-splash" role="status" aria-label="Loading Notes Buddy"><div className="splash-book"><span /><span /><span /><span /><span /><span /></div><strong>Notes Buddy</strong></div>
+  if (starting) return <div className="app-splash" role="status" aria-label="Loading Notes Buddy"><svg className="splash-pen" viewBox="0 0 100 130" aria-hidden="true"><path d="M36 18a8 8 0 0 1 8-8h12a8 8 0 0 1 8 8v8H36zM34 26h32v70H34zM34 81h32v15H34zM34 96h32l-16 28z" fill="#202124" /></svg><span className="splash-write" /><strong>Notes Buddy</strong></div>
   if (!activeNotebookId) return <HomePage onOpen={openNotebook} />
   return (
     <div className="fixed inset-0 bg-white">

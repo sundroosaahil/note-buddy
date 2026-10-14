@@ -3,16 +3,15 @@ html,body,#root{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;-w
 :root{--btn:2.75rem}
 @media (max-height:520px),(max-width:640px){:root{--btn:2.25rem}}
 @custom-variant dark (&:where(.dark, .dark *));
-.app-splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#fff;color:#202124;font:600 17px Georgia,"Times New Roman",serif;animation:splash-in .25s ease-out both}
-.splash-book{position:relative;display:flex;width:66px;height:78px;overflow:hidden;border:2px solid #202124;border-radius:12px 15px 13px 11px;background:#fff;box-shadow:3px 4px 0 #202124;animation:book-bob 1s ease-in-out infinite}
-.splash-book::after{position:absolute;top:0;bottom:0;left:12px;width:2px;background:#202124;content:""}
-.splash-book span{flex:1;border-bottom:2px solid #202124}
-.splash-book span:nth-child(1){background:#f44336}.splash-book span:nth-child(2){background:#ff9800}.splash-book span:nth-child(3){background:#ffeb3b}.splash-book span:nth-child(4){background:#4caf50}.splash-book span:nth-child(5){background:#2196f3}.splash-book span:nth-child(6){background:#8e24aa}
+.app-splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#ffeb3b;color:#202124;font:600 17px Georgia,"Times New Roman",serif;animation:splash-in .25s ease-out both}
+.splash-pen{width:54px;height:70px;transform:rotate(38deg);transform-origin:center;animation:pen-write .9s ease-in-out infinite alternate}
+.splash-write{width:38px;height:3px;border-radius:3px;background:#202124;transform:translateY(-5px);transform-origin:left;animation:write-line .9s ease-in-out infinite alternate}
 .rotate-prompt{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(255,255,255,.96);color:#202124}
 .rotate-card{display:flex;max-width:270px;flex-direction:column;align-items:center;gap:12px;padding:24px;text-align:center;font-family:Georgia,"Times New Roman",serif}
 .rotate-card svg{animation:turn-phone 1.8s ease-in-out infinite}
 .rotate-card strong{font-size:20px}.rotate-card span{font:14px system-ui,sans-serif;color:#5f6368}
-@keyframes book-bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-5px) rotate(2deg)}}
+@keyframes pen-write{from{transform:rotate(30deg) translateY(2px)}to{transform:rotate(43deg) translateY(-2px)}}
+@keyframes write-line{from{transform:translateY(-5px) scaleX(.15)}to{transform:translateY(-5px) scaleX(1)}}
 @keyframes turn-phone{0%,25%{transform:rotate(0)}70%,100%{transform:rotate(90deg)}}
 @keyframes splash-in{from{opacity:0}to{opacity:1}}
-@media(prefers-reduced-motion:reduce){.splash-book,.rotate-card svg{animation:none}}
+@media(prefers-reduced-motion:reduce){.splash-pen,.splash-write,.rotate-card svg{animation:none}}

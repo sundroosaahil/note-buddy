@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect x="48" y="38" width="416" height="436" rx="72" fill="#fff" stroke="#202124" stroke-width="20"/>
-  <path d="M130 48v416" stroke="#202124" stroke-width="18"/>
-  <path d="M78 128h28M78 198h28M78 268h28M78 338h28M78 408h28" stroke="#202124" stroke-width="14" stroke-linecap="round"/>
-  <path d="M131 55h322v65H131z" fill="#f44336"/><path d="M131 120h322v65H131z" fill="#ff9800"/>
-  <path d="M131 185h322v65H131z" fill="#ffeb3b"/><path d="M131 250h322v65H131z" fill="#4caf50"/>
-  <path d="M131 315h322v65H131z" fill="#2196f3"/><path d="M131 380h322v85H131z" fill="#8e24aa"/>
-  <path d="M131 120h322M131 185h322M131 250h322M131 315h322M131 380h322" stroke="#202124" stroke-width="7" opacity=".18"/>
+  <rect width="512" height="512" rx="112" fill="#ffeb3b"/>
+  <g transform="rotate(42 256 256)" fill="#202124">
+    <rect x="224" y="104" width="64" height="252" rx="25"/>
+    <path d="M224 150h64v20h-64zM224 330h64v26h-64z"/>
+    <path d="M224 356h64l-32 74z"/>
+    <rect x="224" y="84" width="64" height="42" rx="16"/>
+  </g>
 </svg>
